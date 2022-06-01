@@ -1,0 +1,847 @@
+---
+title: "Exploratory Data Analysis"
+author: "Núria Jolis Orriols"
+date: "`r format(Sys.Date(),'%e de %B, %Y')`"
+output:
+  pdf_document:
+    keep_tex: yes
+    toc: yes
+    df_print: kable
+    highlight: tango
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_float: yes
+    theme: united
+    highlight: tango
+  word_document:
+    toc: yes
+    df_print: kable
+    highlight: tango
+subtitle: (EDA)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+options(width=90)
+```
+
+```{r packages, message=FALSE, warning=FALSE}
+libraries <- c("readr", "tidyverse", "naniar" ,"ggplot2", "car", "dplyr", "reshape2", "patchwork", "rstatix", "gridExtra", "magrittr", "knitr")
+check.libraries <- is.element(libraries, installed.packages()[, 1])==FALSE
+libraries.to.install <- libraries[check.libraries]
+if (length(libraries.to.install!=0)) {
+  install.packages(libraries.to.install)
+}
+
+success <- sapply(libraries,require, quietly = FALSE,  character.only = TRUE)
+if(length(success) != length(libraries)) {stop("A package failed to return a success in require() function.")}
+```
+
+# Step 1 - Obtaining the data
+
+```{r}
+data<- read.csv("data.Li21.csv", sep=";")
+```
+
+## Dataset description and modification
+
+```{r}
+data <- data[complete.cases(data$outcome), ]
+dim(data)
+str(data)
+```
+
+The dataset consists of 1176 observations and 51 variables, all numeric being 36 of type "double" and 15 of type "integer". 
+
+Dataset modifications: 
+
+1.  The first two variables are to be discarded. The variable, "group", is removed as it was created by Li 2021 to separate the data for training and testing their models, and the ID is the patient's identification which will not be useful to predict the outcome.
+2. A new variable is created to combine systolic and diastolic blood pressure. It is called mean arterial pressure (MAP) and it follows the next equation: 
+      MAP = [Systolic + 2*Diastolic]/3. 
+3. 11 of the variables are numerical binary, they will be converted into factors: "outcome", "gender", "hypertensive", "atrialfibrillation", "CHD.with.no.MI", "diabetes", "deficiencyanemias", "depression", "hyperlipemia", "renal.failure" and "COPD". 
+
+```{r}
+#1
+data<-data[,3:51]
+#2
+m.a.p<-(data$systolic.blood.pressure+2*data$diastolic.blood.pressure)/3
+data<-cbind(data, m.a.p)
+data<-data[,-c(15:16)]
+
+#3
+data$outcome<-factor(data$outcome, labels=c("Survivor", "Non-survivor"))
+data$gender<-factor(data$gender, labels=c("M", "F"))
+data$hypertensive<-factor(data$hypertensive, labels=c("No", "Yes"))
+data$atrialfibrillation<-factor(data$atrialfibrillation, labels=c("No", "Yes"))
+data$renal.failure<-factor(data$renal.failure, labels=c("No", "Yes"))
+data$hyperlipemia<-factor(data$hyperlipemia, labels=c("No", "Yes"))
+data$diabetes<-factor(data$diabetes, labels=c("No", "Yes"))
+data$depression<-factor(data$depression, labels=c("No", "Yes"))
+data$deficiencyanemias<-factor(data$deficiencyanemias, labels=c("No", "Yes"))
+data$COPD<-factor(data$COPD, labels=c("No", "Yes"))
+data$CHD.with.no.MI<-factor(data$CHD.with.no.MI, labels=c("No", "Yes"))
+str(data)
+```
+Finally, we got a dataset of 1176 observations and 48 variables: 39 numeric and 11 factors. The outcome is the response variable whose behavior shall be modeled and the 47 variables left are considered to be candidate predictors.
+
+## Checking missing values
+
+```{r}
+#Determine the total number of missing values
+sum(is.na(data))
+#In percentage and graphic visualization
+round(mean(is.na(data))*100, 1)
+vis_miss(data)
+#Variables with % of missing values
+x1<-apply(is.na(data), 2, mean)
+x2<-round(x1[x1>0], 3)*100 #%NA per variable
+x2
+```
+
+The 3.4% of the values are missing and are concentrated in 18 of the 48 variables. Of those 18 variables, 8 of them present more than 10% of missing values: "basophils", "creatine.kinase", "lactic.acid", "BMI", "neutrophils", "lymphocyte", "pH" and "PCO2".
+
+# Step 2 - Variables description
+
+## Qualitative variables
+
+## Quantitative variables
+
+```{r}
+funlist <- list(N=function(x) sum(!is.na(x))
+                ,Mean=function(x) round(mean(x,na.rm=T),2)
+                ,Min=function(x) round(min(x, na.rm=T),2)
+                ,Median=function(x) round(quantile(x,0.5,na.rm=T),2)
+                ,Max=function(x) round(max(x,na.rm=T),2)
+                ,NAs=function(x) sum(is.na(x))
+                ,NA2=function(x) round(mean(is.na(x))*100, 1)
+                )
+
+data %>% select(BMI,age, heart.rate:m.a.p) %>%summarise(across(where(is.numeric), funlist, .names="{col}%{fn}"))%>%
+  pivot_longer(cols=everything() ,names_to="term") %>% 
+  rowwise %>% 
+  mutate(
+    Var=unlist(strsplit(term,"%"))[2]
+    ,term=unlist(strsplit(term,"%"))[1]
+    ) %>% 
+  ungroup %>% 
+  pivot_wider(names_from=Var, values_from=value) %>%
+  set_colnames(c("Variable", "N", "Mean", "Median", "Min", "Max", "NAs", "%NAs"))%>%
+  kable(format="pandoc", caption = "Descriptive table for quantitative variables")
+```
+
+# Step 3 - Data visualization
+
+The 48 variables can be divided into 5 groups: 
+
+  - Primary variable: outcome.
+  - Demographic features: age, gender and BMI.
+  - Vital signs: heart rate, m.a.p, respiratory.rate,temperature, SPO2 and urine output.
+  - Comorbidities: hypertension, atrial fibrillation, CHD.with.no.MI, diabetes, depression, deficiencyanemias, hiperlipiaemia, renal failure and COPD.
+  - Laboratory variables: the rest. 
+  
+## Exploring the primary variable
+
+The primary response is the binary variable outcome (Survivor, Non-survivor) defined as the vital status at the time of hospital discharge.
+
+```{r}
+plotdata <- data %>%
+  count(outcome) %>%
+  mutate(pct = n / sum(n),
+         pctlabel = paste0(round((pct*100), 2), "%"))
+  ggplot(plotdata, aes(x = reorder(outcome, -pct),
+           y = pct, fill=outcome, beside = TRUE)) + 
+  geom_bar(stat = "identity", color="black") +
+  scale_fill_brewer(palette = "Set2")+
+  geom_text(aes(label = pctlabel),  vjust = -0.5) +
+    theme(legend.position = "none") +
+  labs(x = "Outcome", 
+       y = "Percent", 
+       title  = "Patient's by outcome")
+
+ggsave(filename="results_outcome.pdf", path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+```
+
+As the graphic shows, at the end of the study, 86,48% (1017) of the patients survived whereas the 13,52% left (159) died. It can be concluded that the data is very imbalanced but this is normal in these types of studies.
+
+## Exploring demographic features
+
+Among the demographic features there are two numeric variables (age and BMI) and one factor (gender).
+
+```{r}
+#Summary of the numeric variables
+summary(data[c("age", "BMI")])
+#Convertion into a factor and % of gender
+round(prop.table(table(data$gender))*100, 2)
+```
+
+The age of the patients in this study ranges from 19 to 99 and the BMI ranges from 13,35 to 104,95. There are 214 missing values of the BMI feature.
+
+Regarding gender, 47,49% of the subjects are males and 52,51% are females. In this case, it can be said that the data is balanced.
+
+```{r, message=FALSE}
+#Create data ranges
+data%>%
+  mutate(age_class = case_when(age < 29 ~ "[19,30)",
+        age >= 30 & age < 40 ~ "[30,40)",
+        age >= 40 & age < 50 ~ "[40,50)",
+        age >= 50 & age < 60 ~ "[50,60)",
+        age >= 60 & age < 70 ~ "[60,70)",
+        age >= 70 & age < 80 ~ "[70,80)",
+        age >= 80 & age < 90 ~ "[80,90)",
+        age >= 90 ~ "[90,99]")) %>%
+group_by(age_class, outcome, gender) %>%
+summarise(Counts = n()) %>%
+
+ggplot(mapping = aes(x = age_class, y = Counts, fill = factor(outcome))) +
+geom_bar(stat = "identity") +
+facet_wrap(~gender+outcome, ncol = 4)+
+    ggtitle("Barplot of age groups by gender and outcome")+
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, face = "bold"))+
+  theme(axis.text.x = element_text(angle=90))+
+  theme(legend.position = "none")
+
+ggsave(filename="results_agegender.pdf", path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+```
+The graphics show that the distribution of the age group bars between males and females is very similar; also among survivors and non-survivors. 
+Among the survivors, the incidence is higher between 60 and 90 years old independently of the gender. Among the group of non-survivors, the incidence is higher between 80 and 90 years old. The patient whose outcome is unknown is a male between 80 and 90 years old. 
+
+```{r}
+data%>%
+  na.omit()%>%
+  ggplot(aes(x = outcome, y = BMI, fill=outcome)) + 
+    geom_boxplot() +
+      theme(legend.position = "none")
+
+ggsave(filename="results_bmi.pdf", path="~/Desktop/UOC/TFM/R/Figures", width = 2, height = 4, dpi = 150, units = "in", device='pdf')
+```
+The BMI's median is 28.31. It is slightly higher for survivors than non-survivors. 
+In the first plot, we observe that the median of the two groups seems similar but there are a few outliers that make the group survivor a little bit right-skewed. 
+
+```{r}
+ggsave(filename="results_bmi.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+```
+
+## Exploring vital signs
+
+```{r}
+vital.signs<-data.frame(data[,14:18], data$m.a.p)
+summary(vital.signs)
+```
+All vital signs present from 12 to 18 missing values except urine.output that has 35. 
+
+```{r}
+vital.signs<-data.frame(data[,14:18], data$m.a.p,data$outcome)
+vital.signs %>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "numerical_variables", values_to = "Values") %>%
+  group_by(data.outcome, numerical_variables) %>%
+  ggplot(mapping = aes(x = data.outcome, y = Values, fill = data.outcome)) +
+  geom_boxplot() +
+  theme(legend.position = "none")+
+  facet_wrap(~numerical_variables, scales = "free", ncol = 3)
+```
+```{r}
+ggsave(filename="results_vitalsigns.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+```
+
+The boxplots indicate that the group of non-survivors has an elevated heart and respiratory rate and lower mean arterial pressures and urine outputs compared to survivors.
+In the case of temperature and SP.O2, there isn't seem to be an important difference between the two groups indicating that those two variables are probably not good predictors.
+
+## Exploring comorbidities
+
+```{r}
+comorbidities<-data.frame(data[,5:13])
+summary(comorbidities)
+```
+
+```{r}
+comorbidities<-data.frame(comorbidities, data$outcome)
+comorbidities%>%
+  pivot_longer(-data.outcome, names_to = "Comorbidities_factors", values_to ="value") %>%
+  group_by(Comorbidities_factors) %>%
+  ggplot(aes(x=Comorbidities_factors, fill=value))+
+    geom_bar(position="fill")+
+    labs(y="Proportion", x="Comorbidities")+
+    theme(axis.text.x = element_text(angle=90))
+
+```
+
+```{r}
+ggsave(filename="results_comorbidities.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+```
+
+The most prevalent comorbidity is hypertension which is found in almost 75% of the patients. Atrial fibrillation, deficiency anemias, diabetes, hyperlipemia and renal failure are present between 30 to 50% of the patients. Finally, depression, COPD and CHD with no MI are present in less the 10% of the patients. 
+
+```{r, message=FALSE}
+comorbidities%>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "Comorbidities_factors", values_to = "value") %>%
+  group_by(Comorbidities_factors, data.outcome, value) %>%
+  summarise(Counts = n())%>%
+  mutate(freq = Counts/sum(Counts))%>%
+
+ggplot(mapping = aes(x = data.outcome, y = freq, fill = value)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~Comorbidities_factors, scales = "free", ncol = 3) +
+  ggtitle("Barplots of presence/absence of comorbidities by outcome")+
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, face = "bold"))+
+  labs(x=" ", y="Proportion")
+
+```
+The relation between the presence or absence of comorbidities between survivors and non-survivors is similar for all variables except for atrial fibrillation. In general, the presence of comorbidities is smaller among non-survivors than survivors. In the case of atrial fibrillation is the opposite, there are more patients with atrial fibrillation among non-survivors than among survivors. This indicates that the presence of atrial fibrillation could be an important outcome predictor. 
+
+```{r}
+ggsave(filename="results_comorbidities_outcome.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+```
+
+## Exploring laboratory variables
+
+The laboratory variables can be divided into five groups: blood count, coagulation factors, chemistry, venous blood and heart specific. 
+
+### Blood count
+
+```{r}
+blood.count<-data.frame(data[,19:29], data$outcome)
+summary(blood.count[,1:11])
+```
+
+Three variables (neutrophils, basophils and lymphocytes) present between 144 and 259 missing values. 
+
+```{r}
+blood.count %>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "blood_variables", values_to = "value") %>%
+  group_by(blood_variables, data.outcome) %>%
+
+ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
+  geom_boxplot() +
+  theme(legend.position = "none")+
+  labs(x="Outcome")+
+  facet_wrap(~blood_variables, scales = "free", ncol = 4)
+```
+The boxplot of basophils seems to have outliers. Values above 6 are replaced by NA:
+
+```{r}
+outliers_bas<-data$basophils[data$basophils>6]
+data[data$basophils %in% outliers_bas, "basophils"] = NA
+blood.count<-data.frame(data[,19:29], data$outcome)
+summary(blood.count[,1:11])
+```
+
+```{r}
+blood.count %>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "blood_variables", values_to = "value") %>%
+  group_by(blood_variables, data.outcome) %>%
+
+ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
+  geom_boxplot() +
+  theme(legend.position = "none")+
+  labs(x="Outcome")+
+  facet_wrap(~blood_variables, scales = "free", ncol = 4)
+```
+
+```{r}
+ggsave(filename="results_bloodcount.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+```
+
+### Coagulation factors
+
+```{r}
+coagulation<-data.frame(data[,30:31], data$outcome)
+summary(coagulation[,1:2])
+```
+
+Both variables present 20 missing values. 
+
+```{r}
+coagulation %>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "coagulation_variables", values_to = "value") %>%
+  group_by(coagulation_variables, data.outcome) %>%
+
+ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
+  geom_boxplot() +
+  theme(legend.position = "none")+
+  labs(x="Outcome")+
+  facet_wrap(~coagulation_variables, scales = "free", ncol = 2)
+```
+The variable INR seems to have a few outliers. They will be replaced for missing values.
+
+```{r}
+outliers_INR<-data$INR[data$INR>500]
+data[data$INR %in% outliers_INR, "INR"] = NA
+coagulation<-data.frame(data[,30:31], data$outcome)
+summary(coagulation[,1:2])
+```
+
+```{r}
+coagulation %>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "coagulation_variables", values_to = "value") %>%
+  group_by(coagulation_variables, data.outcome) %>%
+
+ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
+  geom_boxplot() +
+  theme(legend.position = "none")+
+  labs(x="Outcome")+
+  facet_wrap(~coagulation_variables, scales = "free", ncol = 2)
+```
+
+```{r}
+ggsave(filename="results_coagulation.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+```
+
+
+In both variables the median is higher for survivors than non-survivors and the data are right-skewed. 
+
+### Heart specifics factors
+
+```{r}
+heart<-data.frame(data[,c(32, 47)], data$outcome)
+summary(heart[,1:2])
+```
+
+Heart specific factors have all value.
+
+```{r}
+heart %>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "heart_variables", values_to = "value") %>%
+  group_by(heart_variables, data.outcome) %>%
+
+ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
+  geom_boxplot() +
+  theme(legend.position = "none")+
+  facet_wrap(~heart_variables, scales = "free", ncol = 2)
+```
+
+```{r}
+ggsave(filename="results_heart.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+```
+
+### Chemistry
+
+```{r}
+chemistry<-data.frame(data[,33:42], data$outcome)
+summary(chemistry[,1:10])
+```
+
+Blood calcium, glucose and creatine kinase present missing values. 
+
+```{r}
+chemistry %>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "chem_variables", values_to = "value") %>%
+  group_by(chem_variables, data.outcome) %>%
+
+ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
+  geom_boxplot() +
+  theme(legend.position = "none")+
+  facet_wrap(~chem_variables, scales = "free", ncol = 4)
+```
+
+```{r}
+outliers_creatinine<-data$creatinine[data$creatinine>250]
+data[data$creatinine %in% outliers_creatinine, "creatinine"] = NA
+outliers_kinase<-data$creatine.kinase[data$creatine.kinase>500]
+data[data$creatine.kinase %in% outliers_kinase, "creatine.kinase"] = NA
+chemistry<-data.frame(data[,33:42], data$outcome)
+summary(chemistry[,1:10])
+```
+
+```{r}
+chemistry %>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "chem_variables", values_to = "value") %>%
+  group_by(chem_variables, data.outcome) %>%
+
+ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
+  geom_boxplot() +
+  theme(legend.position = "none")+
+  facet_wrap(~chem_variables, scales = "free", ncol = 4)
+```
+```{r}
+ggsave(filename="results_chemistry.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+```
+
+### Venous blood factors
+
+```{r}
+venous<-data.frame(data[,43:46], data$outcome)
+summary(venous[,1:4])
+```
+
+pH, PCO2 and lactic acid present between 229 to 294 missing values. 
+
+```{r}
+venous %>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "venous_variables", values_to = "value") %>%
+  group_by(venous_variables, data.outcome) %>%
+
+ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
+  geom_boxplot() +
+  theme(legend.position = "none")+
+  facet_wrap(~venous_variables, scales = "free", ncol = 4)
+```
+
+```{r}
+outliers_lactic<-data$lactic.acid[data$lactic.acid>200]
+data[data$lactic.acid %in% outliers_lactic, "lactic.acid"] = NA
+venous<-data.frame(data[,43:46], data$outcome)
+summary(venous[,1:4])
+```
+
+```{r}
+venous %>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "venous_variables", values_to = "value") %>%
+  group_by(venous_variables, data.outcome) %>%
+
+ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
+  geom_boxplot() +
+  theme(legend.position = "none")+
+  facet_wrap(~venous_variables, scales = "free", ncol = 4)
+```
+
+```{r}
+ggsave(filename="results_venous.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+```
+According to the boxplots, the group of non-survivors has higher RDW, leucocytes, neutrophils, PT, NT.proBNP, urea, potassium, chloride, anion gap, magnesium and lactic acid compared to the survivors. They also ha lower platelet, lymphocytes, sodium, calcium pH, PCO2 and bicarbonate.
+
+
+# Step 4 - Univariate analysis
+
+As far as I know, in order to assess group comparisons, Li 2021 used T-test and Mann-Whitney-Wilcoxon Test for continuous variables and Chi-squared or Fisher's exact tests for categorical variables. Therefore they did no apply multivariate testing. 
+
+## Outcome group comparison for demographic variables
+
+### Age and BMI
+
+```{r}
+#Checkig normality
+data.demo<-data.frame(data$age, data$BMI, data$outcome)
+data.demo%>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "numerical_variables", values_to = "Values") %>%
+  group_by(data.outcome, numerical_variables) %>%
+  ggplot(mapping = aes(sample=Values)) +
+  stat_qq() +
+  stat_qq_line()+
+  facet_wrap(~numerical_variables+data.outcome, scales = "free", ncol = 4)
+```
+
+```{r}
+data.demo%>%
+  pivot_longer(-data.outcome, names_to = "numerical_variables", values_to = "Values") %>%
+  group_by(numerical_variables) %>%
+  shapiro_test(Values)
+```
+Neither variable presents a normal distribution. 
+
+
+```{r}
+vector_predictors_demo <- paste(colnames(data.demo)[-ncol(data.demo)], "~", "data.outcome")
+
+predictors_formula_demo<- sapply(vector_predictors_demo, function(x) as.formula(x))
+
+resultat_pvalue_demo<- sapply(predictors_formula_demo, function(x) wilcox.test(x, data=data.demo)$p.value)
+
+resultat_pvalue_demo
+```
+
+As the p-value is significant in both cases, we conclude that age and BMI are different for survivors and non-survivors. Non-survivors had lower BMI and different age incidence compared to the survivors.  
+
+### Gender
+
+```{r}
+data %>% group_by(outcome) %>% count(gender) %>% mutate(TOTAL=sum(n)) %>% ungroup %>%  rowwise %>% 
+   mutate(Freq=n/TOTAL*100) %>% ungroup()%>% 
+  mutate(OR=fisher.test(matrix(n, 2, 2))$estimate, OR_low=fisher.test(matrix(n, 2, 2))$conf.int[1], OR_upp=fisher.test(matrix(n, 2, 2))$conf.int[2], pvalor=fisher.test(matrix(n, 2, 2))$p.value) %>% kable(format = "pandoc", round(2))
+```
+
+The p-value is no significant, because of that, gender got discarded as outcome predictor.
+
+## Outcome group comparison for vital signs
+
+```{r}
+#Checkig normality
+vital.signs%>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "numerical_variables", values_to = "Values") %>%
+  group_by(data.outcome, numerical_variables) %>%
+  ggplot(mapping = aes(sample=Values)) +
+  stat_qq() +
+  stat_qq_line()+
+  facet_wrap(~numerical_variables+data.outcome, scales = "free", ncol = 4)
+```
+
+```{r}
+vital.signs%>%
+  pivot_longer(-data.outcome, names_to = "numerical_variables", values_to = "Values") %>%
+  group_by(numerical_variables) %>%
+  shapiro_test(Values)
+```
+All vital signs variables do not present a normal distribution.
+
+```{r}
+vector_predictors_vital<- paste(colnames(vital.signs)[-ncol(vital.signs)], "~", "data.outcome")
+
+predictors_formula_vital<- sapply(vector_predictors_vital, function(x) as.formula(x))
+
+resultat_pvalue_vital<- sapply(predictors_formula_vital, function(x) wilcox.test(x, data=vital.signs)$p.value)
+
+resultat_pvalue_vital
+```
+
+All the p-values resulting from the Wilcoxon-rank test are significant indicating that all vital signs are different between the survivors and non-survivors. 
+
+## Outcome group comparison of comorbidities
+
+```{r}
+# Hypertensive
+data %>% group_by(outcome) %>% count(hypertensive) %>% mutate(TOTAL=sum(n)) %>% ungroup %>%  rowwise %>% 
+   mutate(Freq=n/TOTAL*100) %>% ungroup()%>% 
+  mutate(OR=fisher.test(matrix(n, 2, 2))$estimate, OR_low=fisher.test(matrix(n, 2, 2))$conf.int[1], OR_upp=fisher.test(matrix(n, 2, 2))$conf.int[2], pvalor=fisher.test(matrix(n, 2, 2))$p.value) %>% kable(format = "pandoc", round(2))
+```
+
+```{r}
+# Atrial fibrillation
+data %>% group_by(outcome) %>% count(atrialfibrillation) %>% mutate(TOTAL=sum(n)) %>% ungroup %>%  rowwise %>% 
+   mutate(Freq=n/TOTAL*100) %>% ungroup()%>% 
+  mutate(OR=fisher.test(matrix(n, 2, 2))$estimate, OR_low=fisher.test(matrix(n, 2, 2))$conf.int[1], OR_upp=fisher.test(matrix(n, 2, 2))$conf.int[2], pvalor=fisher.test(matrix(n, 2, 2))$p.value) %>% kable(format = "pandoc", round(2))
+```
+
+```{r}
+# CHD with no MI
+data %>% group_by(outcome) %>% count(CHD.with.no.MI) %>% mutate(TOTAL=sum(n)) %>% ungroup %>%  rowwise %>% 
+   mutate(Freq=n/TOTAL*100) %>% ungroup()%>% 
+  mutate(OR=fisher.test(matrix(n, 2, 2))$estimate, OR_low=fisher.test(matrix(n, 2, 2))$conf.int[1], OR_upp=fisher.test(matrix(n, 2, 2))$conf.int[2], pvalor=fisher.test(matrix(n, 2, 2))$p.value) %>% kable(format = "pandoc", round(2))
+```
+
+```{r}
+# Diabetes
+data %>% group_by(outcome) %>% count(diabetes) %>% mutate(TOTAL=sum(n)) %>% ungroup %>%  rowwise %>% 
+   mutate(Freq=n/TOTAL*100) %>% ungroup()%>% 
+  mutate(OR=fisher.test(matrix(n, 2, 2))$estimate, OR_low=fisher.test(matrix(n, 2, 2))$conf.int[1], OR_upp=fisher.test(matrix(n, 2, 2))$conf.int[2], pvalor=fisher.test(matrix(n, 2, 2))$p.value) %>% kable(format = "pandoc", round(2))
+```
+
+```{r}
+# Deficiency anemias
+data %>% group_by(outcome) %>% count(deficiencyanemias) %>% mutate(TOTAL=sum(n)) %>% ungroup %>%  rowwise %>% 
+   mutate(Freq=n/TOTAL*100) %>% ungroup()%>% 
+  mutate(OR=fisher.test(matrix(n, 2, 2))$estimate, OR_low=fisher.test(matrix(n, 2, 2))$conf.int[1], OR_upp=fisher.test(matrix(n, 2, 2))$conf.int[2], pvalor=fisher.test(matrix(n, 2, 2))$p.value) %>% kable(format = "pandoc", round(2))
+```
+
+```{r}
+# Depression
+data %>% group_by(outcome) %>% count(depression) %>% mutate(TOTAL=sum(n)) %>% ungroup %>%  rowwise %>% 
+   mutate(Freq=n/TOTAL*100) %>% ungroup()%>% 
+  mutate(OR=fisher.test(matrix(n, 2, 2))$estimate, OR_low=fisher.test(matrix(n, 2, 2))$conf.int[1], OR_upp=fisher.test(matrix(n, 2, 2))$conf.int[2], pvalor=fisher.test(matrix(n, 2, 2))$p.value) %>% kable(format = "pandoc", round(2))
+```
+
+```{r}
+# Hyperlipemia
+data %>% group_by(outcome) %>% count(hyperlipemia) %>% mutate(TOTAL=sum(n)) %>% ungroup %>%  rowwise %>% 
+   mutate(Freq=n/TOTAL*100) %>% ungroup()%>% 
+  mutate(OR=fisher.test(matrix(n, 2, 2))$estimate, OR_low=fisher.test(matrix(n, 2, 2))$conf.int[1], OR_upp=fisher.test(matrix(n, 2, 2))$conf.int[2], pvalor=fisher.test(matrix(n, 2, 2))$p.value) %>% kable(format = "pandoc", round(2))
+```
+
+```{r}
+# Renal failure
+data %>% group_by(outcome) %>% count(renal.failure) %>% mutate(TOTAL=sum(n)) %>% ungroup %>%  rowwise %>% 
+   mutate(Freq=n/TOTAL*100) %>% ungroup()%>% 
+  mutate(OR=fisher.test(matrix(n, 2, 2))$estimate, OR_low=fisher.test(matrix(n, 2, 2))$conf.int[1], OR_upp=fisher.test(matrix(n, 2, 2))$conf.int[2], pvalor=fisher.test(matrix(n, 2, 2))$p.value) %>% kable(format = "pandoc", round(2))
+```
+
+```{r}
+# COPD
+data %>% group_by(outcome) %>% count(COPD) %>% mutate(TOTAL=sum(n)) %>% ungroup %>%  rowwise %>% 
+   mutate(Freq=n/TOTAL*100) %>% ungroup()%>% 
+  mutate(OR=fisher.test(matrix(n, 2, 2))$estimate, OR_low=fisher.test(matrix(n, 2, 2))$conf.int[1], OR_upp=fisher.test(matrix(n, 2, 2))$conf.int[2], pvalor=fisher.test(matrix(n, 2, 2))$p.value) %>% kable(format = "pandoc", round(2))
+```
+
+The p-value is significant for the comorbidities of hypertension, atrial fibrillation, deficiency anemias, depression and renal failure.
+
+## Outcome group comparison for lab variables
+
+```{r}
+blood.count%>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "blood_variables", values_to = "value") %>%
+  group_by(data.outcome, blood_variables) %>%
+  ggplot(mapping = aes(sample=value)) +
+  stat_qq() +
+  stat_qq_line()+
+  facet_wrap(~blood_variables+data.outcome, scales = "free", ncol = 8)
+```
+
+```{r}
+blood.count%>%
+  pivot_longer(-data.outcome, names_to = "blood_variables", values_to = "Values") %>%
+  group_by(blood_variables) %>%
+  shapiro_test(Values)
+```
+Shapiro's test p values are all significant so they do not follow a normal distribution. 
+
+```{r}
+vector_predictors_blood <- paste(colnames(blood.count)[-ncol(blood.count)], "~", "data.outcome")
+
+predictors_formula_blood<- sapply(vector_predictors_blood, function(x) as.formula(x))
+
+resultat_pvalue_blood<- sapply(predictors_formula_blood, function(x) wilcox.test(x, data=blood.count)$p.value)
+
+resultat_pvalue_blood
+```
+
+```{r}
+#Checkig normality
+heart%>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "heart_variables", values_to = "value") %>%
+  group_by(data.outcome, heart_variables) %>%
+  ggplot(mapping = aes(sample=value)) +
+  stat_qq() +
+  stat_qq_line()+
+  facet_wrap(~heart_variables+data.outcome, scales = "free", ncol = 8)
+```
+
+```{r}
+heart%>%
+  pivot_longer(-data.outcome, names_to = "heart_variables", values_to = "Values") %>%
+  group_by(heart_variables) %>%
+  shapiro_test(Values)
+```
+
+```{r}
+#Checkig normality
+coagulation%>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "coagulation_variables", values_to = "value") %>%
+  group_by(data.outcome, coagulation_variables) %>%
+  ggplot(mapping = aes(sample=value)) +
+  stat_qq() +
+  stat_qq_line()+
+  facet_wrap(~coagulation_variables+data.outcome, scales = "free", ncol = 8)
+```
+
+```{r}
+coagulation%>%
+  pivot_longer(-data.outcome, names_to = "coagulation_variables", values_to = "Values") %>%
+  group_by(coagulation_variables) %>%
+  shapiro_test(Values)
+```
+Both heart specific factors and coagulation factors do not present a normal distribution.
+
+```{r}
+vector_predictors_heart<- paste(colnames(heart)[-ncol(heart)], "~", "data.outcome")
+
+predictors_formula_heart<- sapply(vector_predictors_heart, function(x) as.formula(x))
+
+resultat_pvalue_heart<- sapply(predictors_formula_heart, function(x) wilcox.test(x, data=heart)$p.value)
+
+resultat_pvalue_heart
+```
+
+```{r}
+vector_predictors_coag<- paste(colnames(coagulation)[-ncol(coagulation)], "~", "data.outcome")
+
+predictors_formula_coag<- sapply(vector_predictors_coag, function(x) as.formula(x))
+
+resultat_pvalue_coag<- sapply(predictors_formula_coag, function(x) wilcox.test(x, data=coagulation)$p.value)
+
+resultat_pvalue_coag
+```
+
+```{r}
+#Checkig normality
+chemistry%>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "chemistry_variables", values_to = "value") %>%
+  group_by(data.outcome, chemistry_variables) %>%
+  ggplot(mapping = aes(sample=value)) +
+  stat_qq() +
+  stat_qq_line()+
+  facet_wrap(~chemistry_variables+data.outcome, scales = "free", ncol = 7)
+```
+
+```{r}
+chemistry%>%
+  pivot_longer(-data.outcome, names_to = "chemistry_variables", values_to = "Values") %>%
+  group_by(chemistry_variables) %>%
+  shapiro_test(Values)
+```
+
+```{r}
+vector_predictors_chem<- paste(colnames(chemistry)[-ncol(chemistry)], "~", "data.outcome")
+
+predictors_formula_chem<- sapply(vector_predictors_chem, function(x) as.formula(x))
+
+resultat_pvalue_chem<- sapply(predictors_formula_chem, function(x) wilcox.test(x, data=chemistry)$p.value)
+
+resultat_pvalue_chem
+```
+
+```{r}
+#Checkig normality
+venous%>%
+  na.omit()%>%
+  pivot_longer(-data.outcome, names_to = "venous_variables", values_to = "value") %>%
+  group_by(data.outcome, venous_variables) %>%
+  ggplot(mapping = aes(sample=value)) +
+  stat_qq() +
+  stat_qq_line()+
+  facet_wrap(~venous_variables+data.outcome, scales = "free", ncol = 4)
+```
+
+```{r}
+venous%>%
+  pivot_longer(-data.outcome, names_to = "venous_variables", values_to = "Values") %>%
+  group_by(venous_variables) %>%
+  shapiro_test(Values)
+```
+
+```{r}
+vector_predictors_venous<- paste(colnames(venous)[-ncol(venous)], "~", "data.outcome")
+
+predictors_formula_venous<- sapply(vector_predictors_venous, function(x) as.formula(x))
+
+resultat_pvalue_venous<- sapply(predictors_formula_venous, function(x) wilcox.test(x, data=venous)$p.value)
+
+resultat_pvalue_venous
+```
+
+Neither of the laboratory variables presents a normal distribution and all the p-values resulting from the Mann-Whitney-Wilcoxon test are significant. 
+
+In the univariate analysis, there is not enough statistical evidence that there are differences between outcome and gender, hyperlipemia, diabetes, CHD and COPD. Therefore, those variables will be removed when modeling. 
+
+# Step 5 - Multivariate analysis
+
+The variables discarded as predictors in the univariate analysis are removed: 
+
+```{r}
+data<-data %>% select(outcome, age ,BMI:atrialfibrillation, deficiencyanemias, hyperlipemia, renal.failure, heart.rate:m.a.p) 
+no_na_data<-na.omit(data)
+```
+
+```{r}
+xnames <- names(no_na_data[2:43])
+fori<- as.formula(paste("outcome ~ ", paste(xnames, collapse= "+")))
+```
+
+
+```{r}
+logit <- glm(fori, data = no_na_data, family = 'binomial')
+summary(logit)
+```
+
+```{r}
+logit_red<-step(logit)
+```
+
+```{r}
+summary(logit_red)
+```
+
