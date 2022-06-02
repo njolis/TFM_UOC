@@ -1,0 +1,219 @@
+---
+title: 'Multivariate analysis: multiple logistic regression'
+author: Núria Jolis Orriols
+date: '`r format(Sys.Date(),"%e de %B, %Y")`' 
+output:
+  pdf_document:
+    toc: yes
+    df_print: kable
+header-includes:
+  - \usepackage[english]{babel}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NULL, cache=TRUE, error = TRUE)
+options(width=90)
+```
+
+```{r packages, message=FALSE, echo=FALSE, warning=FALSE}
+libraries <- c("kernlab", "ggplot2" ,"caret", "tidyverse", "dplyr", "gmodels", "MASS")
+check.libraries <- is.element(libraries, installed.packages()[, 1])==FALSE
+libraries.to.install <- libraries[check.libraries]
+if (length(libraries.to.install!=0)) {
+  install.packages(libraries.to.install)
+}
+
+success <- sapply(libraries,require, quietly = FALSE,  character.only = TRUE)
+if(length(success) != length(libraries)) {stop("A package failed to return a success in require() function.")}
+```
+
+# Step 1 - Obtaining datasets
+
+```{r}
+dataA <- read.csv("data/datasetA.csv",stringsAsFactors=T)
+dataB <- read.csv("data/datasetB.csv",stringsAsFactors=T)
+dataC <- read.csv("data/datasetC.csv",stringsAsFactors=T)
+dataD <- read.csv("data/datasetD.csv",stringsAsFactors=T)
+dataE <- read.csv("data/datasetE.csv",stringsAsFactors=T)
+```
+
+# Step 2 - Generate multiple logistic regresion models 
+
+## Data A
+
+### Full logistic regression model
+
+```{r}
+xnames <- names(dataA[2:48])
+foriA<- as.formula(paste("outcome ~ ", paste(xnames, collapse= "+")))
+```
+
+
+```{r}
+full_mlrA<- glm(foriA, data = dataA, family = 'binomial')
+summary(full_mlrA)
+```
+The full model with dataset A found the variables age, presence of deficiencyanemia, presence of renal.failure, temperature, platelets and PCO2 to be statistically significant.
+
+### Perform stepwise variable selection
+
+The stepAIC function of the MASS package will be used to select the most contributive variables:
+
+```{r, message=FALSE, warning=FALSE}
+step_mlrA<- full_mlrA %>% stepAIC(trace = FALSE)
+```
+The model with the stepAIC function does not converge because of the missing values. 
+
+## Data B
+
+### Full logistic regression model
+
+```{r}
+xnamesB <- names(dataB[2:48])
+foriB<- as.formula(paste("outcome ~ ", paste(xnamesB, collapse= "+")))
+```
+
+
+```{r}
+full_mlrB<- glm(foriB, data = dataB, family = 'binomial')
+summary(full_mlrB)
+```
+
+The full model found the variables age, deficiencyanemia, renal.failure, temperature, platelets and PCO2 to be statistically significant.
+
+### Perform stepwise variable selection
+
+The stepAIC function of the MASS package will be used to select the most contributive variables:
+
+```{r, message=FALSE, warning=FALSE}
+step_mlrB <- full_mlrB %>% stepAIC(trace = FALSE)
+summary(step_mlrB)
+```
+
+The function chose a final model with the following formula: 
+
+outcome ~ age + BMI + atrialfibrillation + deficiencyanemias + 
+    renal.failure + COPD + heart.rate + temperature + leucocyte + 
+    platelets + neutrophils + lymphocyte + PT + urea.nitrogen + 
+    glucose + blood.calcium + chloride + anion.gap + magnesium.ion + 
+    PCO2
+ 
+It found the variables age, deficiencyanemia, renal.failure, temperature, SP.O2, platelets, leucocyte, neutrophils, lymphocyte, blood.calcium, blood.potassium, bicarbonate, pH and PCO2 to be statistically significant.
+
+```{r}
+formula(step_mlrB)
+results_mlrB<-cbind( "OR" = exp(coef(step_mlrB)), "p-value" = coef(summary(step_mlrB))[,4])
+results_mlrB
+```
+
+
+## Data C
+
+### Full logistic regression model
+
+```{r}
+xnamesC <- names(dataC[2:40])
+foriC<- as.formula(paste("outcome ~ ", paste(xnamesC, collapse= "+")))
+```
+
+
+```{r}
+full_mlrC<- glm(foriC, data = dataC, family = 'binomial')
+summary(full_mlrC)
+```
+
+The full model found the variables age, deficiencyanemia, renal.failure, platelets, leucocyte, blood.potassium, blood.calcium and magnesium.ion to be statistically significant.
+
+### Perform stepwise variable selection
+
+The stepAIC function of the MASS package will be used to select the most contributive variables:
+
+```{r, message=FALSE,warning=FALSE}
+step_mlrC <- full_mlrC %>% stepAIC(trace = FALSE)
+```
+The model with the stepAIC function does not converge because of the missing values. 
+
+## Data D
+
+### Full logistic regression model
+
+```{r, message=FALSE}
+xnamesD <- names(dataD[2:48])
+foriD<- as.formula(paste("outcome ~ ", paste(xnamesD, collapse= "+")))
+```
+
+
+```{r}
+full_mlrD<- glm(foriD, data = dataD, family = 'binomial')
+summary(full_mlrD)
+```
+
+The full model found the variables age, deficiencyanemia, renal.failure, temperature, platelets and PCO2 to be statistically significant.
+
+### Perform stepwise variable selection
+
+The stepAIC function of the MASS package will be used to select the most contributive variables:
+
+```{r, message=FALSE,warning=FALSE}
+step_mlrD <- full_mlrD %>% stepAIC(trace = FALSE)
+summary(step_mlrD)
+```
+
+The function chose a final model with the following formula: 
+
+outcome ~ age + BMI + deficiencyanemias + renal.failure + 
+    COPD + heart.rate + temperature + SP.O2 + RDW + leucocyte + 
+    platelets + lymphocyte + urea.nitrogen + blood.potassium + 
+    blood.sodium + blood.calcium + chloride + magnesium.ion + 
+    bicarbonate + lactic.acid + PCO2 + m.a.p
+ 
+It found the variables age, deficiencyanemia, renal.failure, temperature, SP.O2, platelets, leucocyte, neutrophils, lymphocyte, blood.calcium, blood.potassium, bicarbonate, pH and PCO2 to be statistically significant.
+
+```{r}
+formula(step_mlrD)
+results_mlrD<-cbind( "OR" = exp(coef(step_mlrD)), "p-value" = coef(summary(step_mlrD))[,4])
+results_mlrD
+```
+
+
+## Data E
+
+### Full logistic regression model
+
+```{r}
+xnamesE <- names(dataE[2:48])
+foriE<- as.formula(paste("outcome ~ ", paste(xnamesE, collapse= "+")))
+```
+
+
+```{r}
+full_mlrE<- glm(foriE, data = dataE, family = 'binomial')
+summary(full_mlrE)
+```
+
+The full model found the variables age, deficiencyanemia, renal.failure, temperature, platelets and PCO2 to be statistically significant.
+
+### Perform stepwise variable selection
+
+The stepAIC function of the MASS package will be used to select the most contributive variables:
+
+```{r, message=FALSE,warning=FALSE}
+step_mlrE <- full_mlrE %>% stepAIC(trace = FALSE)
+summary(step_mlrE)
+```
+
+The function chose a final model with the following formula: 
+
+outcome ~ age + BMI + atrialfibrillation + deficiencyanemias + 
+    renal.failure + COPD + heart.rate + temperature + leucocyte + 
+    platelets + neutrophils + lymphocyte + PT + urea.nitrogen + 
+    glucose + blood.calcium + chloride + anion.gap + magnesium.ion + 
+    PCO2
+ 
+It found the variables age, deficiencyanemia, renal.failure, temperature, SP.O2, platelets, leucocyte, neutrophils, lymphocyte, blood.calcium, blood.potassium, bicarbonate, pH and PCO2 to be statistically significant.
+
+```{r}
+formula(step_mlrE)
+results_mlrE<-cbind( "OR" = exp(coef(step_mlrE)), "p-value" = coef(summary(step_mlrE))[,4])
+results_mlrE
+```
