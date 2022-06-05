@@ -4,21 +4,8 @@ author: Núria Jolis Orriols
 date: '`r format(Sys.Date(),"%e de %B, %Y")`' 
 output:
   pdf_document:
-    keep_tex: yes
     toc: yes
     df_print: kable
-    highlight: tango
-  html_notebook:
-    df_print: paged
-    toc: yes
-    toc_float: true
-    theme: united
-    highlight: tango
-  html_document:
-    df_print: paged
-    toc: yes
-    toc_float: true
-    theme: united
     highlight: tango
 ---
 
@@ -34,11 +21,22 @@ success <- sapply(libraries,require, quietly = FALSE,  character.only = TRUE)
 if(length(success) != length(libraries)) {stop("A package failed to return a success in require() function.")}
 ```
 
-# Obtaining the data
+# Step 1 - Obtaining the data
 
 ```{r}
-data<- read.csv("data.Li21.csv", sep=";")
+data<- read.csv("data/data.Li21.csv", sep=";")
 ```
+
+# Step 2 - Data clean-up and data curation
+
+The dataset consists of 1176 observations and 51 variables, all numeric being 36 of type "double" and 15 of type "integer". 
+
+## Dataset modifications: 
+
+1.  The first two variables are to be discarded. The variable, "group", is removed as it was created by Li 2021 to separate the data for training and testing their models, and the ID is the patient's identification which will not be useful to predict the outcome.
+2. A new variable is created to combine systolic and diastolic blood pressure. It is called mean arterial pressure (MAP) and it follows the next equation: 
+      MAP = [Systolic + 2*Diastolic]/3. 
+3. 11 of the variables are numerical binary, they will be converted into factors: "outcome", "gender", "hypertensive", "atrialfibrillation", "CHD.with.no.MI", "diabetes", "deficiencyanemias", "depression", "hyperlipemia", "renal.failure" and "COPD". 
 
 ```{r, echo=FALSE}
 #1
@@ -66,7 +64,7 @@ Finally, we got a dataset of 1176 observations and 48 variables being 39 numeric
 
 In order to perform models for outcome prediction an exploratory data analysis is going to be performed first. 
 
-# Checking for missing values
+## Checking for missing values
 
 ```{r}
 #Determine the total number of missing values
@@ -82,23 +80,26 @@ x2
 
 The 3.4% of the values are missing and are concentrated in 21 of the 50 variables. Of those 21 variables, 8 of them present more than 10% of missing values: "basophils", "creatine.kinase", "lactic.acid", "BMI", "neutrophils", "lymphocyte", "pH" and "PCO2".
 
-```{r, message = FALSE, warning=FALSE}
-#Missing values visualization wit VIM package
-missing_values <- data %>% summarize_each(funs(sum(is.na(.))/n()))
 
-missing_values <- gather(missing_values, key="feature", value="missing_pct")
-missing_values %>% 
-  ggplot(aes(x=reorder(feature,-missing_pct),y=missing_pct), xlab="% of missing values", ylab="Variables") +
-    geom_bar(stat="identity",fill="red")+
-      coord_flip()+theme_bw()
+```{r, warning=FALSE}
+#To analyze the patron of the missing values we create a dataset with those variables and then we plot them: 
+var.na<-dplyr::select(data, c("PCO2", "pH", "basophils", "lactic.acid", "BMI", "creatine.kinase", "lymphocyte", "neutrophils", "urine.output", "PT", "INR", "temperature", "glucose", 'm.a.p', "heart.rate", "respiratory.rate", "SP.O2", "blood.calcium"))
+
+aggr_plot<-aggr(var.na, col=c("navyblue", "red"), numbers=TRUE, labels=names(var.na), ylab=c("Histogram of missing values", "Pattern of missing values"), prop = c(TRUE, FALSE), cex.axis=.4)
 
 ```
 
-# Data clean-up and data curation
+```{r}
+ggsave(filename="results_missingvalues_pattern.png", path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='png')
+```
 
-In order to study the models performance we will create five different datasets: 
+The histogram on the left side shows the proportion of missing values in each variables. The graphic on the right side shows the pattern of missing values, in navy blue the observed values and in red color the missing values. It seems that some of the features have a pattern of missing data (there are several red cells in the same row). Because of that, MCAR gets discarded. 
 
-## Dataset A
+The prediction models are very sensitive to missing values, so we would have to take measures in order to make predictions.
+
+In order to study the models performance we will create four different datasets: 
+
+## Dataset A = data with no methodologies applied
 
 ```{r}
 dataA<-data
@@ -122,43 +123,38 @@ table(dataB$outcome)
 ```
 The dataset B after appying the listwise deletion consist in 428 complete observations and 48 variables.
 
-## Dataset C = deletion of variables with \>15% NA
-
-This method is another kind of deletion method where the features with \>15% of missing values are deleted.
-```{r}
-dataC<- dataA[, which((apply(is.na(dataA), 2, mean)*100)<15)]
-round(mean(is.na(dataC))*100, 2)#Checking for missing values
-dim(dataC)# Dimensions of the new dataset
-table(dataC$outcome)
-```
-
-This second method creates a data set with 1177 observations, 43 variables and an 1,22% of missing values. The omitted variables are PCO2, PH, Basophils, Lactic.acid and BMI.
-
-## Dataset D = KNN imputations
+## Dataset C = KNN imputation
 
 This third method is a type of imputation method of handling missing values. It consists in a machine learning-based method that uses a Euclidean distance to find the nearest neighbors. 
 ```{r}
 k<- round(sqrt(nrow(dataA))) #Determine the best k
-dataD<-kNN(dataA, variable = colnames(dataA), k = 34, imp_var = FALSE) #Generate the imputation with k=34
-round(mean(is.na(dataD)*100), 2)#Checking for missing values
-dim(dataD)# Dimensions of the new dataset
-table(dataD$outcome)
+dataC<-kNN(dataA, variable = colnames(dataA), k = 34, imp_var = FALSE) #Generate the imputation with k=34
+round(mean(is.na(dataC)*100), 2)#Checking for missing values
+dim(dataC)# Dimensions of the new dataset
+table(dataC$outcome)
 ```
 This imputation method creates a data set with the same dimensions as dataset A but without missing values (1176 observations and 48 variables). 
 
-## Dataset E = multiple imputation
+## Dataset D = multiple imputation
 
 Another imputation method which consist in generating  multiple imputed values from the observed data.
 ```{r, warning=FALSE}
 columns<- c("PCO2", "pH", "basophils", "lactic.acid", "BMI", "creatine.kinase", "lymphocyte", "neutrophils", "urine.output", "PT", "INR", "temperature", "glucose", 'm.a.p', "heart.rate", "respiratory.rate", "SP.O2", "blood.calcium") #Create a vector with the variables that need to be imputated.
-pmm.data<- mice(dataA[,names(dataA) %in% columns], seed=12345, printFlag = FALSE, m = 30)#Generate the imputation
+pmm.data<- mice(dataA[,names(dataA) %in% columns], seed=12345, printFlag = FALSE, m = 30, method = "pmm")#Generate the imputation
 imputed.data<- mice::complete(pmm.data)
 complete.data<-dataA[, which((apply(is.na(dataA), 2, mean)*100)<0.01)]
-dataE<-cbind(complete.data, imputed.data)#Create the new dataset
-round(mean(is.na(dataE)*100), 2)#Checking for missing values
-dim(dataE)# Dimensions of the new dataset
-table(dataE$outcome)
+dataD<-cbind(complete.data, imputed.data)#Create the new dataset
+round(mean(is.na(dataD)*100), 2)#Checking for missing values
+dim(dataD)# Dimensions of the new dataset
+table(dataD$outcome)
 ```
 
 The multiple imputation method also creates a data set with the same dimensions as dataset A but without missing values (1176 observations and 48 variables). 
+
+```{r}
+write.csv(dataA,"~/Desktop/UOC/TFM/R/TFM/TFM_UOC/data/datasetA.csv", row.names = FALSE)
+write.csv(dataB,"~/Desktop/UOC/TFM/R/TFM/TFM_UOC/data/datasetB.csv", row.names = FALSE)
+write.csv(dataC,"~/Desktop/UOC/TFM/R/TFM/TFM_UOC/data/datasetC.csv", row.names = FALSE)
+write.csv(dataD,"~/Desktop/UOC/TFM/R/TFM/TFM_UOC/data/datasetD.csv", row.names = FALSE)
+```
 
