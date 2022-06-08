@@ -34,10 +34,11 @@ dataA <- read.csv("data/datasetA.csv",stringsAsFactors=T)
 dataB <- read.csv("data/datasetB.csv",stringsAsFactors=T)
 dataC <- read.csv("data/datasetC.csv",stringsAsFactors=T)
 dataD <- read.csv("data/datasetD.csv",stringsAsFactors=T)
-dataE <- read.csv("data/datasetE.csv",stringsAsFactors=T)
 ```
 
 # Step 2 - Generate multiple logistic regresion models 
+
+For each dataset the full model is first generated. After, the stepAIC() function of the MASS package is used to select the most contributive variables according to the lowest AIC.
 
 ## Data A
 
@@ -57,12 +58,11 @@ The full model with dataset A found the variables age, presence of deficiencyane
 
 ### Perform stepwise variable selection
 
-The stepAIC function of the MASS package will be used to select the most contributive variables:
-
 ```{r, message=FALSE, warning=FALSE}
 step_mlrA<- full_mlrA %>% stepAIC(trace = FALSE)
 ```
-The model with the stepAIC function does not converge because of the missing values. 
+
+It is not possible to reduce the model with the stepAIC() function on the dataset A because there are missing values. The model fitting must apply the models to the same dataset and dimensions and with the missing values the dimensions of the dataset changes. 
 
 ## Data B
 
@@ -102,9 +102,16 @@ It found the variables age, deficiencyanemia, renal.failure, temperature, SP.O2,
 
 ```{r}
 formula(step_mlrB)
-results_mlrB<-cbind( "OR" = exp(coef(step_mlrB)), "p-value" = coef(summary(step_mlrB))[,4])
-results_mlrB
+cbind("Estimate"=coef(summary(step_mlrB))[,1], "Odds"=exp(coef(step_mlrB)), coef(summary(step_mlrB))[,2:4])%>% kable(format="pandoc", round(3))
 ```
+
+Las varialbes age, heart.rate, leucocyte, PT, urea.nitrogen, glucose, chloride, anion.gap, magnesium.ion, PCO2 tienen coeficiente negativo por la que probabilidad de sobrevivir disminuye respecto un aumento de estas variables teniendo en cuenta las demás varaibles incluidas en el modelo.
+las variables BMI, artrialfibrillation (Yes), deficiencyanemias(Yes), renal.failure(Yes), COPDYes, temperature, platelets, neutrophils, lymphocyte, bloof.calcium tienen un coeficiente positivo, por lo que la probabilidad de sobrevivir aumenta respecto a un aumento de estas variables considerando las demás variables incluidas en el modelo.
+
+Este modelo define un modelo multiplicativo para los ODDS. 
+Así un cambio de una unidad en X supondría que los ODDS se multiplicarían por exp(coeficiente).
+
+Por ejemplo, un aumento en la unidad de la edad (es decir, con un año más), supondria que tienen 0.95 (exp(-0.05)) veces más de sobrevivir, por tanto como es menor que 1,  quiere decir que a más edad, menos probabilidad de supervivencia.
 
 
 ## Data C
@@ -130,8 +137,13 @@ The stepAIC function of the MASS package will be used to select the most contrib
 
 ```{r, message=FALSE,warning=FALSE}
 step_mlrC <- full_mlrC %>% stepAIC(trace = FALSE)
+summary(step_mlrC)
 ```
-The model with the stepAIC function does not converge because of the missing values. 
+
+```{r}
+formula(step_mlrC)
+cbind("Estimate"=coef(summary(step_mlrC))[,1], "Odds"=exp(coef(step_mlrC)), coef(summary(step_mlrC))[,2:4])%>% kable(format="pandoc", round(3))
+```
 
 ## Data D
 
@@ -171,36 +183,10 @@ It found the variables age, deficiencyanemia, renal.failure, temperature, SP.O2,
 
 ```{r}
 formula(step_mlrD)
-results_mlrD<-cbind( "OR" = exp(coef(step_mlrD)), "p-value" = coef(summary(step_mlrD))[,4])
-results_mlrD
+cbind("Estimate"=coef(summary(step_mlrD))[,1], "Odds"=exp(coef(step_mlrD)), coef(summary(step_mlrD))[,2:4])%>% kable(format="pandoc", round(3))
 ```
 
 
-## Data E
-
-### Full logistic regression model
-
-```{r}
-xnamesE <- names(dataE[2:48])
-foriE<- as.formula(paste("outcome ~ ", paste(xnamesE, collapse= "+")))
-```
-
-
-```{r}
-full_mlrE<- glm(foriE, data = dataE, family = 'binomial')
-summary(full_mlrE)
-```
-
-The full model found the variables age, deficiencyanemia, renal.failure, temperature, platelets and PCO2 to be statistically significant.
-
-### Perform stepwise variable selection
-
-The stepAIC function of the MASS package will be used to select the most contributive variables:
-
-```{r, message=FALSE,warning=FALSE}
-step_mlrE <- full_mlrE %>% stepAIC(trace = FALSE)
-summary(step_mlrE)
-```
 
 The function chose a final model with the following formula: 
 
@@ -212,8 +198,3 @@ outcome ~ age + BMI + atrialfibrillation + deficiencyanemias +
  
 It found the variables age, deficiencyanemia, renal.failure, temperature, SP.O2, platelets, leucocyte, neutrophils, lymphocyte, blood.calcium, blood.potassium, bicarbonate, pH and PCO2 to be statistically significant.
 
-```{r}
-formula(step_mlrE)
-results_mlrE<-cbind( "OR" = exp(coef(step_mlrE)), "p-value" = coef(summary(step_mlrE))[,4])
-results_mlrE
-```

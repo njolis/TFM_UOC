@@ -4,17 +4,6 @@ author: "Núria Jolis Orriols"
 date: "`r format(Sys.Date(),'%e de %B, %Y')`"
 output:
   pdf_document:
-    keep_tex: yes
-    toc: yes
-    df_print: kable
-    highlight: tango
-  html_document:
-    df_print: paged
-    toc: yes
-    toc_float: yes
-    theme: united
-    highlight: tango
-  word_document:
     toc: yes
     df_print: kable
     highlight: tango
@@ -41,7 +30,7 @@ if(length(success) != length(libraries)) {stop("A package failed to return a suc
 # Step 1 - Obtaining the data
 
 ```{r}
-data<- read.csv("data.Li21.csv", sep=";")
+data<- read.csv("data/data.Li21.csv", sep=";")
 ```
 
 ## Dataset description and modification
@@ -83,6 +72,7 @@ data$COPD<-factor(data$COPD, labels=c("No", "Yes"))
 data$CHD.with.no.MI<-factor(data$CHD.with.no.MI, labels=c("No", "Yes"))
 str(data)
 ```
+
 Finally, we got a dataset of 1176 observations and 48 variables: 39 numeric and 11 factors. The outcome is the response variable whose behavior shall be modeled and the 47 variables left are considered to be candidate predictors.
 
 ## Checking missing values
@@ -152,14 +142,12 @@ plotdata <- data %>%
   ggplot(plotdata, aes(x = reorder(outcome, -pct),
            y = pct, fill=outcome, beside = TRUE)) + 
   geom_bar(stat = "identity", color="black") +
-  scale_fill_brewer(palette = "Set2")+
   geom_text(aes(label = pctlabel),  vjust = -0.5) +
     theme(legend.position = "none") +
   labs(x = "Outcome", 
-       y = "Percent", 
-       title  = "Patient's by outcome")
+       y = "Percent")
 
-ggsave(filename="results_outcome.pdf", path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+ggsave(filename="results_outcome.pdf", path="~/Desktop/UOC/TFM/R/Figures", width = 2.5, height = 4, dpi = 300, units = "in", device='pdf')
 ```
 
 As the graphic shows, at the end of the study, 86,48% (1017) of the patients survived whereas the 13,52% left (159) died. It can be concluded that the data is very imbalanced but this is normal in these types of studies.
@@ -173,11 +161,12 @@ Among the demographic features there are two numeric variables (age and BMI) and
 summary(data[c("age", "BMI")])
 #Convertion into a factor and % of gender
 round(prop.table(table(data$gender))*100, 2)
+table(data$COPD)
 ```
 
 The age of the patients in this study ranges from 19 to 99 and the BMI ranges from 13,35 to 104,95. There are 214 missing values of the BMI feature.
 
-Regarding gender, 47,49% of the subjects are males and 52,51% are females. In this case, it can be said that the data is balanced.
+Regarding gender, 47,45% of the subjects are males and 52,55% are females. In this case, it can be said that the data is balanced.
 
 ```{r, message=FALSE}
 #Create data ranges
@@ -207,6 +196,7 @@ The graphics show that the distribution of the age group bars between males and 
 Among the survivors, the incidence is higher between 60 and 90 years old independently of the gender. Among the group of non-survivors, the incidence is higher between 80 and 90 years old. The patient whose outcome is unknown is a male between 80 and 90 years old. 
 
 ```{r}
+
 data%>%
   na.omit()%>%
   ggplot(aes(x = outcome, y = BMI, fill=outcome)) + 
@@ -218,8 +208,41 @@ ggsave(filename="results_bmi.pdf", path="~/Desktop/UOC/TFM/R/Figures", width = 2
 The BMI's median is 28.31. It is slightly higher for survivors than non-survivors. 
 In the first plot, we observe that the median of the two groups seems similar but there are a few outliers that make the group survivor a little bit right-skewed. 
 
+
 ```{r}
-ggsave(filename="results_bmi.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+a<-data%>%
+  mutate(age_class = case_when(age < 29 ~ "[19,30)",
+        age >= 30 & age < 40 ~ "[30,40)",
+        age >= 40 & age < 50 ~ "[40,50)",
+        age >= 50 & age < 60 ~ "[50,60)",
+        age >= 60 & age < 70 ~ "[60,70)",
+        age >= 70 & age < 80 ~ "[70,80)",
+        age >= 80 & age < 90 ~ "[80,90)",
+        age >= 90 ~ "[90,99]")) %>%
+group_by(age_class, outcome, gender) %>%
+summarise(Counts = n()) %>%
+
+ggplot(mapping = aes(x = age_class, y = Counts, fill = factor(outcome))) +
+geom_bar(stat = "identity") +
+facet_wrap(~gender+outcome, ncol = 4)+
+  theme(axis.text.x = element_text(angle=90))+
+  theme(legend.position = "none")+
+   labs(x = "Age group")
+
+b<-data%>%
+  na.omit()%>%
+  ggplot(aes(x = outcome, y = BMI, fill=outcome)) + 
+    geom_boxplot() +
+      theme(legend.position = "none")+
+   labs(x = "Outcome")
+
+x<-grid.arrange(a,b, nrow=1, widths=c(3,1.3))
+x
+
+```
+
+```{r}
+ggsave(filename="results_age+bmi.pdf",plot=x, path="~/Desktop/UOC/TFM/R/Figures", width = 6, height = 3.5, dpi = 150, units = "in", device='pdf')
 ```
 
 ## Exploring vital signs
@@ -284,15 +307,14 @@ comorbidities%>%
 ggplot(mapping = aes(x = data.outcome, y = freq, fill = value)) +
   geom_bar(stat = "identity") +
   facet_wrap(~Comorbidities_factors, scales = "free", ncol = 3) +
-  ggtitle("Barplots of presence/absence of comorbidities by outcome")+
   theme(plot.title = element_text(hjust = 0.5, vjust = 1, face = "bold"))+
-  labs(x=" ", y="Proportion")
+  labs(x="Outcome", y="Proportion")
 
 ```
 The relation between the presence or absence of comorbidities between survivors and non-survivors is similar for all variables except for atrial fibrillation. In general, the presence of comorbidities is smaller among non-survivors than survivors. In the case of atrial fibrillation is the opposite, there are more patients with atrial fibrillation among non-survivors than among survivors. This indicates that the presence of atrial fibrillation could be an important outcome predictor. 
 
 ```{r}
-ggsave(filename="results_comorbidities_outcome.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
+ggsave(filename="results_comorbiditiesbyoutcome.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
 ```
 
 ## Exploring laboratory variables
@@ -385,7 +407,7 @@ coagulation %>%
 ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
   geom_boxplot() +
   theme(legend.position = "none")+
-  labs(x="Outcome")+
+  labs(x="Outcome", y="Value")+
   facet_wrap(~coagulation_variables, scales = "free", ncol = 2)
 ```
 
@@ -394,7 +416,7 @@ ggsave(filename="results_coagulation.pdf",plot=last_plot(), path="~/Desktop/UOC/
 ```
 
 
-In both variables the median is higher for survivors than non-survivors and the data are right-skewed. 
+In both variables the median is higher for survivors than non-survivors and the data is right-skewed. 
 
 ### Heart specifics factors
 
@@ -403,7 +425,7 @@ heart<-data.frame(data[,c(32, 47)], data$outcome)
 summary(heart[,1:2])
 ```
 
-Heart specific factors have all value.
+Heart specific factors have all values.
 
 ```{r}
 heart %>%
@@ -414,6 +436,7 @@ heart %>%
 ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
   geom_boxplot() +
   theme(legend.position = "none")+
+  labs(x="Outcome", y="Value")+
   facet_wrap(~heart_variables, scales = "free", ncol = 2)
 ```
 
@@ -460,8 +483,10 @@ chemistry %>%
 ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
   geom_boxplot() +
   theme(legend.position = "none")+
+  labs(x="Outcome", y="Value")+
   facet_wrap(~chem_variables, scales = "free", ncol = 4)
 ```
+
 ```{r}
 ggsave(filename="results_chemistry.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
 ```
@@ -484,6 +509,7 @@ venous %>%
 ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
   geom_boxplot() +
   theme(legend.position = "none")+
+  labs(x="Outcome", y="Value")+
   facet_wrap(~venous_variables, scales = "free", ncol = 4)
 ```
 
@@ -503,6 +529,7 @@ venous %>%
 ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
   geom_boxplot() +
   theme(legend.position = "none")+
+  labs(x="Outcome", y="Value")+
   facet_wrap(~venous_variables, scales = "free", ncol = 4)
 ```
 
@@ -512,7 +539,7 @@ ggsave(filename="results_venous.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R
 According to the boxplots, the group of non-survivors has higher RDW, leucocytes, neutrophils, PT, NT.proBNP, urea, potassium, chloride, anion gap, magnesium and lactic acid compared to the survivors. They also ha lower platelet, lymphocytes, sodium, calcium pH, PCO2 and bicarbonate.
 
 
-# Step 4 - Univariate analysis
+# Step 4 - Bivariate analysis
 
 As far as I know, in order to assess group comparisons, Li 2021 used T-test and Mann-Whitney-Wilcoxon Test for continuous variables and Chi-squared or Fisher's exact tests for categorical variables. Therefore they did no apply multivariate testing. 
 
@@ -815,33 +842,4 @@ resultat_pvalue_venous
 
 Neither of the laboratory variables presents a normal distribution and all the p-values resulting from the Mann-Whitney-Wilcoxon test are significant. 
 
-In the univariate analysis, there is not enough statistical evidence that there are differences between outcome and gender, hyperlipemia, diabetes, CHD and COPD. Therefore, those variables will be removed when modeling. 
-
-# Step 5 - Multivariate analysis
-
-The variables discarded as predictors in the univariate analysis are removed: 
-
-```{r}
-data<-data %>% select(outcome, age ,BMI:atrialfibrillation, deficiencyanemias, hyperlipemia, renal.failure, heart.rate:m.a.p) 
-no_na_data<-na.omit(data)
-```
-
-```{r}
-xnames <- names(no_na_data[2:43])
-fori<- as.formula(paste("outcome ~ ", paste(xnames, collapse= "+")))
-```
-
-
-```{r}
-logit <- glm(fori, data = no_na_data, family = 'binomial')
-summary(logit)
-```
-
-```{r}
-logit_red<-step(logit)
-```
-
-```{r}
-summary(logit_red)
-```
-
+In the bivariate analysis, there is not enough statistical evidence that there are differences between outcome and gender, hyperlipemia, diabetes, CHD and COPD. Therefore, those variables will be removed when modeling. 

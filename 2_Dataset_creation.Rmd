@@ -6,7 +6,6 @@ output:
   pdf_document:
     toc: yes
     df_print: kable
-    highlight: tango
 ---
 
 ```{r packages, message=FALSE, warning=FALSE}
