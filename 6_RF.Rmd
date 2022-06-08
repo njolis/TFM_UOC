@@ -1,0 +1,260 @@
+---
+title: 'Comparison of RF models for outcome prediction of ICU-admitted heart failure patients'
+author: Núria Jolis Orriols
+date: '`r format(Sys.Date(),"%e de %B, %Y")`' 
+output:
+  pdf_document:
+    toc: yes
+    df_print: kable
+header-includes:
+  - \usepackage[english]{babel}
+params:
+  p.train: !r 0.7
+  seed.train: 12345
+  seed.clsfier: 1234567
+  seed.improv: 123
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NULL, error = TRUE)
+options(width=90)
+```
+
+```{r packages, message=FALSE, echo=FALSE, warning=FALSE}
+libraries <- c("randomForest", "ggplot2" ,"caret", "tidyverse", "dplyr", "gmodels", "ROSE", "mice", "VIM")
+check.libraries <- is.element(libraries, installed.packages()[, 1])==FALSE
+libraries.to.install <- libraries[check.libraries]
+if (length(libraries.to.install!=0)) {
+  install.packages(libraries.to.install)
+}
+
+success <- sapply(libraries,require, quietly = FALSE,  character.only = TRUE)
+if(length(success) != length(libraries)) {stop("A package failed to return a success in require() function.")}
+```
+
+# Step 1 - Obtaining data
+
+```{r}
+dataA <- read.csv("data/datasetA.csv",stringsAsFactors=T)
+dataB <- read.csv("data/datasetB.csv",stringsAsFactors=T)
+dataC <- read.csv("data/datasetC.csv",stringsAsFactors=T)
+dataD <- read.csv("data/datasetD.csv",stringsAsFactors=T)
+```
+
+# Step 2 - Model training
+
+## Data training/test partition into 70-30%
+
+```{r}
+#Data A
+set.seed(12345)
+nA<-nrow(dataA)
+trainA<-sample(nA,floor(nA*params$p.train))
+dataA_train<-dataA[trainA,]
+dataA_test<-dataA[-trainA,]
+```
+
+```{r}
+#Data B
+set.seed(12345)
+nB<-nrow(dataB)
+trainB<-sample(nB,floor(nB*params$p.train))
+dataB_train<-dataB[trainB,]
+dataB_test<-dataB[-trainB,]
+```
+
+```{r}
+#Data C
+nC<-nrow(dataC)
+trainC<-sample(nC,floor(nC*params$p.train))
+dataC_train<-dataC[trainC,]
+dataC_test<-dataC[-trainC,]
+```
+
+```{r}
+#Data D
+set.seed(12345)
+nD<-nrow(dataD)
+trainD<-sample(nD,floor(nD*params$p.train))
+dataD_train<-dataD[trainD,]
+dataD_test<-dataD[-trainD,]
+```
+
+## Model training
+
+We are going to generate RF models with the training data to predict the outcome. We use the randomForest() function of the randomForest package. 
+
+### Data A
+
+```{r,warning=FALSE,message=FALSE}
+rf.A<-randomForest(outcome ~ ., data=dataA_train)
+rf.A
+```
+
+### Model B
+
+```{r,warning=FALSE,message=FALSE}
+rf.B<-randomForest(outcome ~ ., data=dataB_train)
+rf.B
+```
+
+```{r}
+plot(rf.B)
+importance(rf.B)
+varImpPlot(rf.B)
+```
+
+### Model C
+
+```{r,warning=FALSE,message=FALSE}
+rf.C<-randomForest(outcome ~ ., data=dataC_train)
+rf.C
+```
+
+```{r}
+plot(rf.C)
+importance(rf.C)
+varImpPlot(rf.C)
+```
+
+### Model D
+
+```{r,warning=FALSE,message=FALSE}
+rf.D<-randomForest(outcome ~ ., data=dataD_train)
+rf.D
+```
+
+```{r}
+plot(rf.D)
+importance(rf.D)
+varImpPlot(rf.D)
+```
+
+## Step 4 - Model prediction and evaluation
+
+**Prediction**
+
+We use the function `predict` to generate predictions on the testing dataset:
+
+
+### B
+```{r}
+pred.rf.B<-predict(rf.B, dataB_test[-1])
+```
+
+### C
+```{r}
+pred.rf.C<-predict(rf.C, dataC_test[-1])
+```
+
+### D
+```{r}
+pred.rf.D<-predict(rf.D, dataD_test[-1])
+```
+
+**Evaluation**
+
+### B
+```{r}
+confusionMatrix(dataB_test$outcome, pred.rf.B)
+roc.curve(dataB_test$outcome, pred.rf.B)
+```
+
+### C
+```{r}
+confusionMatrix(dataC_test$outcome,pred.rf.C)
+roc.curve(dataC_test$outcome,pred.rf.C)
+```
+
+### D
+```{r}
+confusionMatrix(dataD_test$outcome,pred.rf.D)
+roc.curve(dataD_test$outcome,pred.rf.D)
+```
+
+
+## Step 5 - Improving model performance
+
+To improve model's performance a k-fold cross-validation method will be used. It consist in a resampling method that uses different portions of the data to test and train a model on different iterations. 
+
+```{r}
+set.seed(params$seed.improv)
+ctrl <- trainControl(method='repeatedcv',
+                            number=10,
+                            summaryFunction = defaultSummary,
+                            verboseIter = FALSE,
+                            repeats = 3)
+grid_rf<- expand.grid(.mtry=c(2,4,8,16))
+```
+
+### Dataset B
+
+```{r}
+model.rf.B.Kfold<- train(outcome ~ ., 
+                          data=dataB_train,
+                          method="rf",
+                          trControl=ctrl,
+                            tuneLength=9,
+                          tuneGrid=grid_rf,
+                          metric="Accuracy",
+                          prePoc = c("center", "scale"),
+                          verbose=FALSE,
+                          trace=FALSE
+                  )
+```
+
+```{r}
+prdclassB<-predict(model.rf.B.Kfold, newdata=dataB_test)
+str(prdclassB)
+confusionMatrix(data=prdclassB, dataB_test$outcome)
+roc.curve(dataB_test$outcome, prdclassB)
+```
+
+### Dataset C
+
+```{r}
+model.rf.C.Kfold<- train(outcome ~ ., 
+                          data=dataC_train,
+                          method="rf",
+                          trControl=ctrl,
+                            tuneLength=9,
+                          tuneGrid=grid_rf,
+                          metric="Accuracy",
+                          prePoc = c("center", "scale"),
+                          verbose=FALSE,
+                          trace=FALSE
+                  )
+```
+
+```{r}
+prdclassC<-predict(model.rf.C.Kfold, newdata=dataC_test)
+str(prdclassC)
+confusionMatrix(data=prdclassC, dataC_test$outcome)
+roc.curve(dataC_test$outcome, prdclassC)
+```
+
+
+### Dataset D
+
+```{r}
+model.rf.D.Kfold<- train(outcome ~ ., 
+                          data=dataD_train,
+                          method="rf",
+                          trControl=ctrl,
+                            tuneLength=9,
+                          tuneGrid=grid_rf,
+                          metric="Accuracy",
+                          prePoc = c("center", "scale"),
+                          verbose=FALSE,
+                          trace=FALSE
+                  )
+```
+
+```{r}
+prdclassD<-predict(model.rf.D.Kfold, newdata=dataD_test)
+str(prdclassD)
+confusionMatrix(data=prdclassD, dataD_test$outcome)
+roc.curve(dataD_test$outcome, prdclassD)
+```
+
+
