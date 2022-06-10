@@ -38,7 +38,7 @@ dataD <- read.csv("data/datasetD.csv",stringsAsFactors=T)
 
 # Step 2 - Generate multiple logistic regresion models 
 
-For each dataset the full model is first generated. After, the stepAIC() function of the MASS package is used to select the most contributive variables according to the lowest AIC.
+For each dataset the full model is first generated. After, the stepAIC() function of the MASS package is used to select the most contributing variables according to the lowest AIC.
 
 ## Data A
 
@@ -62,7 +62,7 @@ The full model with dataset A found the variables age, presence of deficiencyane
 step_mlrA<- full_mlrA %>% stepAIC(trace = FALSE)
 ```
 
-It is not possible to reduce the model with the stepAIC() function on the dataset A because there are missing values. The model fitting must apply the models to the same dataset and dimensions and with the missing values the dimensions of the dataset changes. 
+It is not possible to reduce the model with the stepAIC() function on the dataset A because there are missing values.
 
 ## Data B
 
@@ -92,27 +92,10 @@ summary(step_mlrB)
 
 The function chose a final model with the following formula: 
 
-outcome ~ age + BMI + atrialfibrillation + deficiencyanemias + 
-    renal.failure + COPD + heart.rate + temperature + leucocyte + 
-    platelets + neutrophils + lymphocyte + PT + urea.nitrogen + 
-    glucose + blood.calcium + chloride + anion.gap + magnesium.ion + 
-    PCO2
- 
-It found the variables age, deficiencyanemia, renal.failure, temperature, SP.O2, platelets, leucocyte, neutrophils, lymphocyte, blood.calcium, blood.potassium, bicarbonate, pH and PCO2 to be statistically significant.
-
 ```{r}
 formula(step_mlrB)
 cbind("Estimate"=coef(summary(step_mlrB))[,1], "Odds"=exp(coef(step_mlrB)), coef(summary(step_mlrB))[,2:4])%>% kable(format="pandoc", round(3))
 ```
-
-Las varialbes age, heart.rate, leucocyte, PT, urea.nitrogen, glucose, chloride, anion.gap, magnesium.ion, PCO2 tienen coeficiente negativo por la que probabilidad de sobrevivir disminuye respecto un aumento de estas variables teniendo en cuenta las demás varaibles incluidas en el modelo.
-las variables BMI, artrialfibrillation (Yes), deficiencyanemias(Yes), renal.failure(Yes), COPDYes, temperature, platelets, neutrophils, lymphocyte, bloof.calcium tienen un coeficiente positivo, por lo que la probabilidad de sobrevivir aumenta respecto a un aumento de estas variables considerando las demás variables incluidas en el modelo.
-
-Este modelo define un modelo multiplicativo para los ODDS. 
-Así un cambio de una unidad en X supondría que los ODDS se multiplicarían por exp(coeficiente).
-
-Por ejemplo, un aumento en la unidad de la edad (es decir, con un año más), supondria que tienen 0.95 (exp(-0.05)) veces más de sobrevivir, por tanto como es menor que 1,  quiere decir que a más edad, menos probabilidad de supervivencia.
-
 
 ## Data C
 
@@ -128,8 +111,6 @@ foriC<- as.formula(paste("outcome ~ ", paste(xnamesC, collapse= "+")))
 full_mlrC<- glm(foriC, data = dataC, family = 'binomial')
 summary(full_mlrC)
 ```
-
-The full model found the variables age, deficiencyanemia, renal.failure, platelets, leucocyte, blood.potassium, blood.calcium and magnesium.ion to be statistically significant.
 
 ### Perform stepwise variable selection
 
@@ -173,28 +154,7 @@ summary(step_mlrD)
 
 The function chose a final model with the following formula: 
 
-outcome ~ age + BMI + deficiencyanemias + renal.failure + 
-    COPD + heart.rate + temperature + SP.O2 + RDW + leucocyte + 
-    platelets + lymphocyte + urea.nitrogen + blood.potassium + 
-    blood.sodium + blood.calcium + chloride + magnesium.ion + 
-    bicarbonate + lactic.acid + PCO2 + m.a.p
- 
-It found the variables age, deficiencyanemia, renal.failure, temperature, SP.O2, platelets, leucocyte, neutrophils, lymphocyte, blood.calcium, blood.potassium, bicarbonate, pH and PCO2 to be statistically significant.
-
 ```{r}
 formula(step_mlrD)
 cbind("Estimate"=coef(summary(step_mlrD))[,1], "Odds"=exp(coef(step_mlrD)), coef(summary(step_mlrD))[,2:4])%>% kable(format="pandoc", round(3))
 ```
-
-
-
-The function chose a final model with the following formula: 
-
-outcome ~ age + BMI + atrialfibrillation + deficiencyanemias + 
-    renal.failure + COPD + heart.rate + temperature + leucocyte + 
-    platelets + neutrophils + lymphocyte + PT + urea.nitrogen + 
-    glucose + blood.calcium + chloride + anion.gap + magnesium.ion + 
-    PCO2
- 
-It found the variables age, deficiencyanemia, renal.failure, temperature, SP.O2, platelets, leucocyte, neutrophils, lymphocyte, blood.calcium, blood.potassium, bicarbonate, pH and PCO2 to be statistically significant.
-

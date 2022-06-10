@@ -28,14 +28,14 @@ data<- read.csv("data/data.Li21.csv", sep=";")
 
 # Step 2 - Data clean-up and data curation
 
-The dataset consists of 1176 observations and 51 variables, all numeric being 36 of type "double" and 15 of type "integer". 
+The dataset consists of 1176 observations and 51 variables.
 
 ## Dataset modifications: 
 
 1.  The first two variables are to be discarded. The variable, "group", is removed as it was created by Li 2021 to separate the data for training and testing their models, and the ID is the patient's identification which will not be useful to predict the outcome.
 2. A new variable is created to combine systolic and diastolic blood pressure. It is called mean arterial pressure (MAP) and it follows the next equation: 
       MAP = [Systolic + 2*Diastolic]/3. 
-3. 11 of the variables are numerical binary, they will be converted into factors: "outcome", "gender", "hypertensive", "atrialfibrillation", "CHD.with.no.MI", "diabetes", "deficiencyanemias", "depression", "hyperlipemia", "renal.failure" and "COPD". 
+3. 11 of the variables are binary, they will be converted into factors: "outcome", "gender", "hypertensive", "atrialfibrillation", "CHD.with.no.MI", "diabetes", "deficiencyanemias", "depression", "hyperlipemia", "renal.failure" and "COPD". 
 
 ```{r, echo=FALSE}
 #1
@@ -60,8 +60,6 @@ data$CHD.with.no.MI<-factor(data$CHD.with.no.MI, labels=c("No", "Yes"))
 str(data)
 ```
 Finally, we got a dataset of 1176 observations and 48 variables being 39 numeric and 11 factors. Outcome is the response variable whose behavior shall be modeled and the 49 variables left are considered to be candidate predictors.
-
-In order to perform models for outcome prediction an exploratory data analysis is going to be performed first. 
 
 ## Checking for missing values
 
@@ -134,7 +132,7 @@ table(dataC$outcome)
 ```
 This imputation method creates a data set with the same dimensions as dataset A but without missing values (1176 observations and 48 variables). 
 
-## Dataset D = multiple imputation
+## Dataset D = MICE
 
 Another imputation method which consist in generating  multiple imputed values from the observed data.
 ```{r, warning=FALSE}

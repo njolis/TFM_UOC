@@ -16,7 +16,7 @@ params:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, comment = NULL, cache=TRUE, error = TRUE)
+knitr::opts_chunk$set(echo = TRUE, comment = NULL, error = TRUE)
 options(width=90)
 ```
 
@@ -39,7 +39,6 @@ dataA <- read.csv("data/datasetA.csv",stringsAsFactors=T)
 dataB <- read.csv("data/datasetB.csv",stringsAsFactors=T)
 dataC <- read.csv("data/datasetC.csv",stringsAsFactors=T)
 dataD <- read.csv("data/datasetD.csv",stringsAsFactors=T)
-dataE <- read.csv("data/datasetE.csv",stringsAsFactors=T)
 ```
 
 # Step 2 - Model training
@@ -81,15 +80,6 @@ dataD_train<-dataD[trainD,]
 dataD_test<-dataD[-trainD,]
 ```
 
-```{r}
-#Data E
-set.seed(12345)
-nE<-nrow(dataE)
-trainE<-sample(nE,floor(nE*params$p.train))
-dataE_train<-dataE[trainE,]
-dataE_test<-dataE[-trainE,]
-```
-
 ## Model training
 
 We are going to generate RF models with the training data to predict the outcome. We use the randomForest() function of the randomForest package. 
@@ -120,6 +110,13 @@ varImpPlot(rf.B)
 rf.C<-randomForest(outcome ~ ., data=dataC_train)
 rf.C
 ```
+
+```{r}
+plot(rf.C)
+importance(rf.C)
+varImpPlot(rf.C)
+```
+
 ### Model D
 
 ```{r,warning=FALSE,message=FALSE}
@@ -133,39 +130,25 @@ importance(rf.D)
 varImpPlot(rf.D)
 ```
 
-### Model E
-
-```{r,warning=FALSE,message=FALSE}
-rf.E<-randomForest(outcome ~ ., data=dataE_train)
-rf.E
-```
-
-```{r}
-plot(rf.E)
-importance(rf.E)
-varImpPlot(rf.E)
-```
-
 ## Step 4 - Model prediction and evaluation
 
 **Prediction**
 
 We use the function `predict` to generate predictions on the testing dataset:
 
-
 ### B
 ```{r}
 pred.rf.B<-predict(rf.B, dataB_test[-1])
 ```
 
+### C
+```{r}
+pred.rf.C<-predict(rf.C, dataC_test[-1])
+```
+
 ### D
 ```{r}
 pred.rf.D<-predict(rf.D, dataD_test[-1])
-```
-
-### E
-```{r}
-pred.rf.E<-predict(rf.E, dataE_test[-1])
 ```
 
 **Evaluation**
@@ -175,21 +158,23 @@ pred.rf.E<-predict(rf.E, dataE_test[-1])
 confusionMatrix(dataB_test$outcome, pred.rf.B)
 roc.curve(dataB_test$outcome, pred.rf.B)
 ```
+
+### C
+```{r}
+confusionMatrix(dataC_test$outcome,pred.rf.C)
+roc.curve(dataC_test$outcome,pred.rf.C)
+```
+
 ### D
 ```{r}
 confusionMatrix(dataD_test$outcome,pred.rf.D)
 roc.curve(dataD_test$outcome,pred.rf.D)
 ```
 
-### E
-```{r}
-confusionMatrix(dataE_test$outcome,pred.rf.E)
-roc.curve(dataE_test$outcome,pred.rf.E)
-```
 
 ## Step 5 - Improving model performance
 
-To improve model's performance a k-fold cross-validation method will be used. It consist in a resampling method that uses different portions of the data to test and train a model on different iterations. 
+To validate model's performance a k-fold cross-validation method will be used. It consist in a resampling method that uses different portions of the data to test and train a model on different iterations. 
 
 ```{r}
 set.seed(params$seed.improv)
@@ -224,6 +209,29 @@ confusionMatrix(data=prdclassB, dataB_test$outcome)
 roc.curve(dataB_test$outcome, prdclassB)
 ```
 
+### Dataset C
+
+```{r}
+model.rf.C.Kfold<- train(outcome ~ ., 
+                          data=dataC_train,
+                          method="rf",
+                          trControl=ctrl,
+                            tuneLength=9,
+                          tuneGrid=grid_rf,
+                          metric="Accuracy",
+                          prePoc = c("center", "scale"),
+                          verbose=FALSE,
+                          trace=FALSE
+                  )
+```
+
+```{r}
+prdclassC<-predict(model.rf.C.Kfold, newdata=dataC_test)
+str(prdclassC)
+confusionMatrix(data=prdclassC, dataC_test$outcome)
+roc.curve(dataC_test$outcome, prdclassC)
+```
+
 ### Dataset D
 
 ```{r}
@@ -245,27 +253,4 @@ prdclassD<-predict(model.rf.D.Kfold, newdata=dataD_test)
 str(prdclassD)
 confusionMatrix(data=prdclassD, dataD_test$outcome)
 roc.curve(dataD_test$outcome, prdclassD)
-```
-
-### Dataset E
-
-```{r}
-model.rf.E.Kfold<- train(outcome ~ ., 
-                          data=dataE_train,
-                          method="rf",
-                          trControl=ctrl,
-                            tuneLength=9,
-                          tuneGrid=grid_rf,
-                          metric="Accuracy",
-                          prePoc = c("center", "scale"),
-                          verbose=FALSE,
-                          trace=FALSE
-                  )
-```
-
-```{r}
-prdclassE<-predict(model.rf.E.Kfold, newdata=dataE_test)
-str(prdclassE)
-confusionMatrix(data=prdclassE, dataE_test$outcome)
-roc.curve(dataE_test$outcome, prdclassE)
 ```
