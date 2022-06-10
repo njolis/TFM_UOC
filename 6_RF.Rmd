@@ -136,10 +136,6 @@ varImpPlot(rf.D)
 
 We use the function `predict` to generate predictions on the testing dataset:
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 ### B
 ```{r}
 pred.rf.B<-predict(rf.B, dataB_test[-1])
@@ -178,11 +174,7 @@ roc.curve(dataD_test$outcome,pred.rf.D)
 
 ## Step 5 - Improving model performance
 
-<<<<<<< HEAD
 To validate model's performance a k-fold cross-validation method will be used. It consist in a resampling method that uses different portions of the data to test and train a model on different iterations. 
-=======
-To improve model's performance a k-fold cross-validation method will be used. It consist in a resampling method that uses different portions of the data to test and train a model on different iterations. 
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 
 ```{r}
 set.seed(params$seed.improv)
@@ -240,10 +232,6 @@ confusionMatrix(data=prdclassC, dataC_test$outcome)
 roc.curve(dataC_test$outcome, prdclassC)
 ```
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 ### Dataset D
 
 ```{r}
@@ -266,8 +254,3 @@ str(prdclassD)
 confusionMatrix(data=prdclassD, dataD_test$outcome)
 roc.curve(dataD_test$outcome, prdclassD)
 ```
-<<<<<<< HEAD
-=======
-
-
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
