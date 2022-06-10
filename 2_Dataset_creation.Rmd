@@ -28,22 +28,14 @@ data<- read.csv("data/data.Li21.csv", sep=";")
 
 # Step 2 - Data clean-up and data curation
 
-<<<<<<< HEAD
 The dataset consists of 1176 observations and 51 variables.
-=======
-The dataset consists of 1176 observations and 51 variables, all numeric being 36 of type "double" and 15 of type "integer". 
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 
 ## Dataset modifications: 
 
 1.  The first two variables are to be discarded. The variable, "group", is removed as it was created by Li 2021 to separate the data for training and testing their models, and the ID is the patient's identification which will not be useful to predict the outcome.
 2. A new variable is created to combine systolic and diastolic blood pressure. It is called mean arterial pressure (MAP) and it follows the next equation: 
       MAP = [Systolic + 2*Diastolic]/3. 
-<<<<<<< HEAD
 3. 11 of the variables are binary, they will be converted into factors: "outcome", "gender", "hypertensive", "atrialfibrillation", "CHD.with.no.MI", "diabetes", "deficiencyanemias", "depression", "hyperlipemia", "renal.failure" and "COPD". 
-=======
-3. 11 of the variables are numerical binary, they will be converted into factors: "outcome", "gender", "hypertensive", "atrialfibrillation", "CHD.with.no.MI", "diabetes", "deficiencyanemias", "depression", "hyperlipemia", "renal.failure" and "COPD". 
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 
 ```{r, echo=FALSE}
 #1
@@ -69,11 +61,6 @@ str(data)
 ```
 Finally, we got a dataset of 1176 observations and 48 variables being 39 numeric and 11 factors. Outcome is the response variable whose behavior shall be modeled and the 49 variables left are considered to be candidate predictors.
 
-<<<<<<< HEAD
-=======
-In order to perform models for outcome prediction an exploratory data analysis is going to be performed first. 
-
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 ## Checking for missing values
 
 ```{r}
@@ -96,24 +83,9 @@ The 3.4% of the values are missing and are concentrated in 21 of the 50 variable
 var.na<-dplyr::select(data, c("PCO2", "pH", "basophils", "lactic.acid", "BMI", "creatine.kinase", "lymphocyte", "neutrophils", "urine.output", "PT", "INR", "temperature", "glucose", 'm.a.p', "heart.rate", "respiratory.rate", "SP.O2", "blood.calcium"))
 
 aggr_plot<-aggr(var.na, col=c("navyblue", "red"), numbers=TRUE, labels=names(var.na), ylab=c("Histogram of missing values", "Pattern of missing values"), prop = c(TRUE, FALSE), cex.axis=.4)
-<<<<<<< HEAD
 
 ```
-=======
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 
-```{r}
-ggsave(filename="results_missingvalues_pattern.png", path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='png')
-```
-
-<<<<<<< HEAD
-The histogram on the left side shows the proportion of missing values in each variables. The graphic on the right side shows the pattern of missing values, in navy blue the observed values and in red color the missing values. It seems that some of the features have a pattern of missing data (there are several red cells in the same row). Because of that, MCAR gets discarded. 
-
-The prediction models are very sensitive to missing values, so we would have to take measures in order to make predictions.
-
-In order to study the models performance we will create four different datasets: 
-
-=======
 ```{r}
 ggsave(filename="results_missingvalues_pattern.png", path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='png')
 ```
@@ -124,7 +96,6 @@ The prediction models are very sensitive to missing values, so we would have to 
 
 In order to study the models performance we will create four different datasets: 
 
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 ## Dataset A = data with no methodologies applied
 
 ```{r}
@@ -161,11 +132,7 @@ table(dataC$outcome)
 ```
 This imputation method creates a data set with the same dimensions as dataset A but without missing values (1176 observations and 48 variables). 
 
-<<<<<<< HEAD
 ## Dataset D = MICE
-=======
-## Dataset D = multiple imputation
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 
 Another imputation method which consist in generating  multiple imputed values from the observed data.
 ```{r, warning=FALSE}

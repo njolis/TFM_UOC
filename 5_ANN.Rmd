@@ -8,10 +8,6 @@ output:
   pdf_document:
     toc: yes
     df_print: kable
-<<<<<<< HEAD
-=======
-    highlight: zenburn
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 header-includes:
   - \usepackage[spanish]{babel}
 params:
@@ -45,17 +41,9 @@ if(length(success) != length(libraries)) {stop("A package failed to return a suc
 dataset <- read.csv("data/data.Li21.csv", sep = ";")
 ```
 
-<<<<<<< HEAD
 ## Step 2 - Datasets creation (withou factors)
 
 ```{r, echo=FALSE}
-=======
-## Step 2 - Exploraci?n y preparaci?n de los datos
-
-En primer lugar se presenta los seis primeros registros:
-
-```{r frag2, echo=FALSE}
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 #1
 dataset<-dataset[complete.cases(dataset$outcome), ]
 dataset<-dataset[,3:51]
@@ -97,11 +85,7 @@ dim(dataC)# Dimensions of the new dataset
 table(dataC$outcome)
 ```
 
-<<<<<<< HEAD
 ## Dataset D = MICE
-=======
-## Dataset D = multiple imputation
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 
 ```{r, warning=FALSE}
 columns<- c("PCO2", "pH", "basophils", "lactic.acid", "BMI", "creatine.kinase", "lymphocyte", "neutrophils", "urine.output", "PT", "INR", "temperature", "glucose", 'm.a.p', "heart.rate", "respiratory.rate", "SP.O2", "blood.calcium") #Create a vector with the variables that need to be imputated.
@@ -114,42 +98,25 @@ dim(dataD)# Dimensions of the new dataset
 table(dataD$outcome)
 ```
 
-<<<<<<< HEAD
 ### Numeric data transformation
-=======
-### Transformaci?n de los datos num?ricos.
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 
 ```{r frag5}
 # custom normalization function
 normalize <- function(x) {
 return((x - min(x)) / (max(x) - min(x)))
 }
-<<<<<<< HEAD
 data_nrmA <- as.data.frame(lapply(dataA[,-1],normalize))
-=======
-
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 data_nrmB <- as.data.frame(lapply(dataB[,-1],normalize))
 data_nrmC <- as.data.frame(lapply(dataC[,-1],normalize))
 data_nrmD <- as.data.frame(lapply(dataD[,-1],normalize))
 ```
 
-<<<<<<< HEAD
 ### Creation of binary variables
 
 ```{r}
 # Creaci?n de variables binarias en lugar de usar la variable factor
 data_nrmA$S <- dataA$outcome=="Survivor"
 data_nrmA$N <- dataA$outcome=="Non-survivor"
-=======
-### Creaci?n de variables binarias en lugar de usar la variable factor.
-
-Ahora se crean tantas variables binarias como categorias tiene la variable `Class`.
-
-```{r frag7}
-# Creaci?n de variables binarias en lugar de usar la variable factor
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 data_nrmB$S <- dataB$outcome=="Survivor"
 data_nrmB$N <- dataB$outcome=="Non-survivor"
 data_nrmC$S <- dataC$outcome=="Survivor"
@@ -158,25 +125,17 @@ data_nrmD$S <- dataD$outcome=="Survivor"
 data_nrmD$N <- dataD$outcome=="Non-survivor"
 ```
 
-<<<<<<< HEAD
 ### Data partition into training and test
 
 ```{r}
 #n_train <- 2/3
 nA <- nrwo(data_nrmA)
-=======
-### Partici?n de los datos en training/test
-
-```{r}
-#n_train <- 2/3
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 nB <- nrow(data_nrmB)
 nC <- nrow(data_nrmC)
 nD <- nrow(data_nrmD)
 ```
 
 ```{r}
-<<<<<<< HEAD
 set.seed(params$seed.train)
 trainA <- sample(nA,floor(nA*params$p.train))
 data_nrmA.train <- data_nrmA[trainA,]
@@ -185,61 +144,39 @@ data_nrmA.test  <- data_nrmA[-trainA,]
 
 ```{r}
 set.seed(params$seed.train)
-=======
-# create training and test data
-set.seed(params$seed.train)
-#n_train <- 2/3
-#n <- nrow(data_nrm)
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 trainB <- sample(nB,floor(nB*params$p.train))
 data_nrmB.train <- data_nrmB[trainB,]
 data_nrmB.test  <- data_nrmB[-trainB,]
 ```
 
 ```{r}
-<<<<<<< HEAD
 set.seed(params$seed.train)
-=======
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 trainC <- sample(nC,floor(nC*params$p.train))
 data_nrmC.train <- data_nrmC[trainC,]
 data_nrmC.test  <- data_nrmC[-trainC,]
 ```
 
 ```{r}
-<<<<<<< HEAD
 set.seed(params$seed.train)
-=======
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 trainD <- sample(nD,floor(nD*params$p.train))
 data_nrmD.train <- data_nrmD[trainD,]
 data_nrmD.test  <- data_nrmD[-trainD,]
 ```
 
-<<<<<<< HEAD
 # Step 3 - Model training
-=======
-# Step 3 - Entrenamiento del modelo.
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 
 ## One node 
 
 ```{r, echo=FALSE,warning=FALSE,message=FALSE}
 ## Create a formula for a model with a large number of variables:
-<<<<<<< HEAD
 xnamA <- names(data_nrmA[1:47])
 (fmlaA <- as.formula(paste("S+N ~ ", paste(xnamA, collapse= "+"))))
-=======
-xnamB <- names(data_nrmB[1:47])
-(fmlaB <- as.formula(paste("S+N ~ ", paste(xnamB, collapse= "+"))))
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 ```
 
 ```{r,warning=FALSE,message=FALSE,fig.height=4  }
 
 # simple ANN with only a single hidden neuron
 set.seed(params$seed.clsfier) # to guarantee repeatable results
-<<<<<<< HEAD
 data_model_A<- neuralnet(fmlaA,
                           data = data_nrmA.train,
                           hidden=1,linear.output=FALSE)
@@ -258,18 +195,12 @@ xnamB <- names(data_nrmB[1:47])
 
 ```{r,warning=FALSE,message=FALSE}
 set.seed(params$seed.clsfier) # to guarantee repeatable results
-=======
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 data_model_B<- neuralnet(fmlaB,
                           data = data_nrmB.train,
                           hidden=1,linear.output=FALSE)
 
 # visualize the network topology
 plot(data_model_B, rep='best')
-<<<<<<< HEAD
-=======
-
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 ```
 
 ```{r, echo=FALSE,warning=FALSE,message=FALSE}
@@ -278,13 +209,7 @@ xnamC <- names(data_nrmC[1:47])
 (fmlaC <- as.formula(paste("S+N ~ ", paste(xnamC, collapse= "+"))))
 ```
 
-<<<<<<< HEAD
 ```{r,warning=FALSE,message=FALSE}
-=======
-```{r,warning=FALSE,message=FALSE,fig.height=4  }
-
-# simple ANN with only a single hidden neuron
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 set.seed(params$seed.clsfier) # to guarantee repeatable results
 data_model_C<- neuralnet(fmlaC,
                           data = data_nrmC.train,
@@ -292,10 +217,6 @@ data_model_C<- neuralnet(fmlaC,
 
 # visualize the network topology
 plot(data_model_C, rep='best')
-<<<<<<< HEAD
-=======
-
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 ```
 
 ```{r, echo=FALSE,warning=FALSE,message=FALSE}
@@ -304,13 +225,7 @@ xnamD <- names(data_nrmD[1:47])
 (fmlaD <- as.formula(paste("S+N ~ ", paste(xnamD, collapse= "+"))))
 ```
 
-<<<<<<< HEAD
 ```{r,warning=FALSE,message=FALSE}
-=======
-```{r,warning=FALSE,message=FALSE,fig.height=4  }
-
-# simple ANN with only a single hidden neuron
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 set.seed(params$seed.clsfier) # to guarantee repeatable results
 data_model_D<- neuralnet(fmlaD,
                           data = data_nrmD.train,
@@ -322,11 +237,7 @@ plot(data_model_D, rep='best')
 
 ## Three nodes
 
-<<<<<<< HEAD
 ```{r,warning=FALSE,message=FALSE}
-=======
-```{r,warning=FALSE,message=FALSE,fig.height=4  }
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 
 # simple ANN with only a single hidden neuron
 set.seed(params$seed.clsfier) # to guarantee repeatable results
@@ -336,18 +247,9 @@ data_model_B3<- neuralnet(fmlaB,
 
 # visualize the network topology
 plot(data_model_B3, rep='best')
-<<<<<<< HEAD
 ```
 
 ```{r,warning=FALSE,message=FALSE}
-=======
-
-```
-
-```{r,warning=FALSE,message=FALSE,fig.height=4  }
-
-# simple ANN with only a single hidden neuron
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 set.seed(params$seed.clsfier) # to guarantee repeatable results
 data_model_C3<- neuralnet(fmlaC,
                           data = data_nrmC.train,
@@ -355,18 +257,9 @@ data_model_C3<- neuralnet(fmlaC,
 
 # visualize the network topology
 plot(data_model_C3, rep='best')
-<<<<<<< HEAD
 ```
 
 ```{r,warning=FALSE,message=FALSE }
-=======
-
-```
-
-```{r,warning=FALSE,message=FALSE,fig.height=4  }
-
-# simple ANN with only a single hidden neuron
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 set.seed(params$seed.clsfier) # to guarantee repeatable results
 data_model_D3<- neuralnet(fmlaD,
                           data = data_nrmD.train,
@@ -376,11 +269,7 @@ data_model_D3<- neuralnet(fmlaD,
 plot(data_model_D3, rep='best')
 ```
 
-<<<<<<< HEAD
 # Step 4 - Models predicton and evaluation
-=======
-# Step 4 - Predicci?n y evaluaci?n del modelo
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 
 ## One node
 
@@ -515,11 +404,7 @@ roc.curve(dataD$outcome[-trainD], prediction_factorD3)
 
 # Step 5 - Improving model performance
 
-<<<<<<< HEAD
 To validate model's performance a k-fold cross-validation method will be used. It consist in a resampling method that uses different portions of the data to test and train a model on different iterations. 
-=======
-To improve model's performance a k-fold cross-validation method will be used. It consist in a resampling method that uses different portions of the data to test and train a model on different iterations. 
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 
 ## One hidden node
 
@@ -664,9 +549,3 @@ confusionMatrix(resD3.kfold, positive= "Non-survivor")
 
 roc.curve(data_nrmD.test.caret$outcome, predict.kfold.ann.D3)
 ```
-<<<<<<< HEAD
-=======
-
-
-
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457

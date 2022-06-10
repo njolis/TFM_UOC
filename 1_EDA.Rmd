@@ -208,46 +208,6 @@ ggsave(filename="results_bmi.pdf", path="~/Desktop/UOC/TFM/R/Figures", width = 2
 The BMI's median is 28.31. It is slightly higher for survivors than non-survivors. 
 In the first plot, we observe that the median of the two groups seems similar but there are a few outliers that make the group survivor a little bit right-skewed. 
 
-<<<<<<< HEAD
-=======
-
-```{r}
-a<-data%>%
-  mutate(age_class = case_when(age < 29 ~ "[19,30)",
-        age >= 30 & age < 40 ~ "[30,40)",
-        age >= 40 & age < 50 ~ "[40,50)",
-        age >= 50 & age < 60 ~ "[50,60)",
-        age >= 60 & age < 70 ~ "[60,70)",
-        age >= 70 & age < 80 ~ "[70,80)",
-        age >= 80 & age < 90 ~ "[80,90)",
-        age >= 90 ~ "[90,99]")) %>%
-group_by(age_class, outcome, gender) %>%
-summarise(Counts = n()) %>%
-
-ggplot(mapping = aes(x = age_class, y = Counts, fill = factor(outcome))) +
-geom_bar(stat = "identity") +
-facet_wrap(~gender+outcome, ncol = 4)+
-  theme(axis.text.x = element_text(angle=90))+
-  theme(legend.position = "none")+
-   labs(x = "Age group")
-
-b<-data%>%
-  na.omit()%>%
-  ggplot(aes(x = outcome, y = BMI, fill=outcome)) + 
-    geom_boxplot() +
-      theme(legend.position = "none")+
-   labs(x = "Outcome")
-
-x<-grid.arrange(a,b, nrow=1, widths=c(3,1.3))
-x
-
-```
-
-```{r}
-ggsave(filename="results_age+bmi.pdf",plot=x, path="~/Desktop/UOC/TFM/R/Figures", width = 6, height = 3.5, dpi = 150, units = "in", device='pdf')
-```
-
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 ## Exploring vital signs
 
 ```{r}
@@ -418,11 +378,6 @@ ggplot(mapping = aes(x = data.outcome, y = value, fill = data.outcome)) +
 ```{r}
 ggsave(filename="results_coagulation.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R/Figures", width = 5, height = 4, dpi = 150, units = "in", device='pdf')
 ```
-<<<<<<< HEAD
-=======
-
-
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 In both variables the median is higher for survivors than non-survivors and the data is right-skewed. 
 
 ### Heart specifics factors
@@ -545,10 +500,6 @@ ggsave(filename="results_venous.pdf",plot=last_plot(), path="~/Desktop/UOC/TFM/R
 ```
 According to the boxplots, the group of non-survivors has higher RDW, leucocytes, neutrophils, PT, NT.proBNP, urea, potassium, chloride, anion gap, magnesium and lactic acid compared to the survivors. They also ha lower platelet, lymphocytes, sodium, calcium pH, PCO2 and bicarbonate.
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 # Step 4 - Bivariate analysis
 
 As far as I know, in order to assess group comparisons, Li 2021 used T-test and Mann-Whitney-Wilcoxon Test for continuous variables and Chi-squared or Fisher's exact tests for categorical variables. Therefore they did no apply multivariate testing. 
@@ -845,8 +796,4 @@ resultat_pvalue_venous
 
 Neither of the laboratory variables presents a normal distribution and all the p-values resulting from the Mann-Whitney-Wilcoxon test are significant. 
 
-<<<<<<< HEAD
 The bivariate analysis indicates that there is not enough statistical evidence to affirm that there are differences between outcome and gender, depression, CHD and COPD.
-=======
-In the bivariate analysis, there is not enough statistical evidence that there are differences between outcome and gender, hyperlipemia, diabetes, CHD and COPD. Therefore, those variables will be removed when modeling. 
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457

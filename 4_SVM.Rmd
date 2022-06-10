@@ -47,10 +47,6 @@ dataD <- read.csv("data/datasetD.csv",stringsAsFactors=T)
 ## Data training/test partition into 70-30%
 
 ```{r}
-<<<<<<< HEAD
-=======
-#n_train <- 0.7
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 #Data A
 set.seed(12345)
 nA<-nrow(dataA)
@@ -87,11 +83,7 @@ dataD_test<-dataD[-trainD,]
 
 ## Model training 
 
-<<<<<<< HEAD
 We are going to generate SVM models with the training data to predict the outcome. We use the ksvm() function of the kernlab package. We are going to try four different kernels: linear, Gaussian, and polynomial.
-=======
-We are going to generate SVM models with the training data to predict the outcome. We use the ksvm() function of the kernlab package. We are going to try four different kernels: linear, Gaussian, Laplacian and hyperbolic.
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 
 ### Linear
 
@@ -242,7 +234,6 @@ tabD.svm.pol<-table(predict.modelD.pol, dataD_test$outcome)
 roc.curve(dataD_test$outcome, predict.modelD.pol)
 ```
 
-<<<<<<< HEAD
 The best models are obtained with the linear function. 
 
 # Step 4 - Model's validation
@@ -275,44 +266,6 @@ model.kfold.C <- train(form = outcome~ . , data = dataC_train, method='svmLinear
 model.kfold.C
 ```
 
-=======
-
-Of the tested models, the linear SVMs with datasets D and E are the best. The prediction of linear and polynomial models is identical, so the simplest of the two algorithms (the linear) is selected. The difference between the predictions with datasets D and E is practically negligible; therefore, an attempt to improve them both will be made.
-The models with the datasets A and C did not converge because the datasets contain missing values. 
-
-# Step 4 - Model's validation
-
-To improve model's performance a k-fold cross-validation method will be used. It consist in a resampling method that uses different portions of the data to test and train a model on different iterations. 
-
-This method will be performed on SVM linear of dataset C and D:
-
-### Dataset B 
-
-```{r}
-set.seed(params$seed.improv)
-model.kfold.B <- train(form = outcome~ . , data = dataB_train, method='svmLinear',trControl= trainControl(method='cv'), 
-                  tuneGrid=NULL, trace = FALSE)
-model.kfold.B
-```
-
-```{r}
-predict.kfold.B<-predict(model.kfold.B, dataB_test)
-resB<-table(predict.kfold.B, dataB_test$outcome)
-confusionMatrix(resB, positive= "Non-survivor")
-
-roc.curve(dataB_test$outcome, predict.kfold.B)
-```
-
-### Dataset C 
-
-```{r}
-set.seed(params$seed.improv)
-model.kfold.C <- train(form = outcome~ . , data = dataC_train, method='svmLinear',trControl= trainControl(method='cv'), 
-                  tuneGrid=NULL, trace = FALSE)
-model.kfold.C
-```
-
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
 ```{r}
 predict.kfold.C<-predict(model.kfold.C, dataC_test)
 resC<-table(predict.kfold.C, dataC_test$outcome)
@@ -336,12 +289,4 @@ resD<-table(predict.kfold.D, dataD_test$outcome)
 confusionMatrix(resD, positive= "Non-survivor")
 
 roc.curve(dataD_test$outcome, predict.kfold.D)
-<<<<<<< HEAD
 ```
-=======
-```
-
-The results obtained are exactly the same. Therefore, in this case, the method of k-fold cross-validation did not improve our model's performance. 
-
-
->>>>>>> 5462a01b46a715d22da86b12d2f6be2dbdf9b457
