@@ -95,6 +95,26 @@ The 3.4% of the values are missing and are concentrated in 18 of the 48 variable
 
 ## Qualitative variables
 
+```{r, message=FALSE, warning=FALSE}
+stats_categoric <- function(x, data) {
+  data %>% 
+    group_by(categoria = !!x) %>% 
+    summarise(N = n()) %>% 
+    # tidyr::drop_na(.) %>% treu comentari si no vols NA a la taula
+    mutate(freq = prop.table(N)) %>% 
+    mutate(NAs= sum(is.na(x))) %>% 
+    mutate(NApercent= round(mean(is.na(x))*100, 1)) %>% 
+    mutate(variable = quo_name(x)) %>% 
+    relocate(variable)
+}
+
+
+variables <- c(quo(outcome), quo(gender), quo(depression), quo(hypertensive), quo(hyperlipemia), quo(atrialfibrillation), quo(CHD.with.no.MI), quo(COPD), quo(deficiencyanemias), quo(diabetes), quo(renal.failure))
+
+do.call("rbind", lapply(variables, stats_categoric, data))
+```
+
+
 ## Quantitative variables
 
 ```{r}
@@ -116,7 +136,7 @@ data %>% select(BMI,age, heart.rate:m.a.p) %>%summarise(across(where(is.numeric)
     ) %>% 
   ungroup %>% 
   pivot_wider(names_from=Var, values_from=value) %>%
-  set_colnames(c("Variable", "N", "Mean", "Median", "Min", "Max", "NAs", "%NAs"))%>%
+  set_colnames(c("Variable", "N", "Mean", "Min", "Median", "Max", "NAs", "%NAs"))%>%
   kable(format="pandoc", caption = "Descriptive table for quantitative variables")
 ```
 
